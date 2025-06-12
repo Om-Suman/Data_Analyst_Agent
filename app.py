@@ -5,6 +5,7 @@ import mimetypes
 import docx
 import fitz  # PyMuPDF
 from PIL import Image
+from dotenv import load_dotenv
 import pytesseract
 import requests
 import json
@@ -12,9 +13,10 @@ import re
 import time
 import io
 import sys
-
+import os
 # --- Config ---
-TOGETHER_API_KEY = "6a8dd2f17bb99e1c7e0bf156d4166c757abfa21cae1664b6149f6867596ebf57"  # 🔐 Replace this
+load_dotenv()
+TOGETHER_API_KEY = os.getenv("MY_API_KEY") 
 LLAMA_MODEL_ID = "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8"
 
 # --- File Parser ---
