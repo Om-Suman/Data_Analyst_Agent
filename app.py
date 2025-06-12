@@ -16,7 +16,7 @@ import sys
 import os
 # --- Config ---
 load_dotenv()
-TOGETHER_API_KEY = os.getenv("MY_API_KEY") 
+TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY") 
 LLAMA_MODEL_ID = "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8"
 
 # --- File Parser ---
