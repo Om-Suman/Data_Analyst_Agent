@@ -1,1 +1,2 @@
+# hide sensitive information
 .streamlit/secrets.toml
