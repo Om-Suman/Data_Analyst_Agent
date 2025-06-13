@@ -6,6 +6,7 @@ import docx
 import fitz  # PyMuPDF
 from PIL import Image
 from dotenv import load_dotenv
+from pathlib import Path
 import pytesseract
 import requests
 import json
@@ -15,9 +16,10 @@ import io
 import sys
 import os
 # --- Config ---
-load_dotenv()
-TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY") 
+api_key = st.secrets["API_KEY"]
 LLAMA_MODEL_ID = "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8"
+
+
 
 # --- File Parser ---
 def parse_file(uploaded_file):
@@ -44,7 +46,7 @@ def parse_file(uploaded_file):
 # --- LLM Call ---
 def query_llama_agent(prompt, retries=3):
     headers = {
-        "Authorization": f"Bearer {TOGETHER_API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
 
@@ -79,14 +81,19 @@ def extract_and_run_code(response_text, df):
         code = re.sub(r"df\s*=\s*pd\.read_csv\(.*?\)", "", code.strip())
         st.code(code.strip(), language="python")
         try:
-            # Capture stdout to display print outputs in the app
             buffer = io.StringIO()
             sys.stdout = buffer
 
-            exec_globals = {"pd": pd, "plt": plt, "df": df, "np": __import__('numpy')}
+            # Prep exec environment
+            plt.clf()
+            fig, ax = plt.subplots()
+            exec_globals = {
+                "pd": pd, "np": __import__('numpy'), "plt": plt, "df": df,
+                "fig": fig, "ax": ax, "st": st
+            }
+
             exec(code.strip(), exec_globals)
 
-            # Reset stdout
             sys.stdout = sys.__stdout__
             printed_output = buffer.getvalue()
 
@@ -94,8 +101,8 @@ def extract_and_run_code(response_text, df):
                 st.subheader("🖨️ Output")
                 st.text(printed_output.strip())
 
-            fig = plt.gcf()
-            if fig.axes:
+            # Only display plots if they have actual content
+            if fig.axes and any(a.has_data() for a in fig.axes):
                 st.subheader("📊 Visual Output")
                 st.pyplot(fig)
             plt.clf()
