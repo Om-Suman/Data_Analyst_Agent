@@ -53,26 +53,11 @@ A powerful Streamlit-based data analysis application that combines natural langu
 - Python 3.8 or higher
 - pip package manager
 
-### Required Dependencies
+### Install Required Dependencies
 
 ```bash
 pip install -r requirements.txt
 
-```
-
-### System Dependencies
-
-For OCR functionality (image text extraction):
-
-```bash
-# Ubuntu/Debian
-sudo apt-get install tesseract-ocr
-
-# macOS
-brew install tesseract
-
-# Windows
-# Download from: https://github.com/UB-Mannheim/tesseract/wiki
 ```
 
 ## 🔧 Configuration
