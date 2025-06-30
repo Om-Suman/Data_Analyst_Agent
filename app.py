@@ -37,6 +37,8 @@ if 'data_info' not in st.session_state:
     st.session_state.data_info = {}
 if 'current_file_name' not in st.session_state:
     st.session_state.current_file_name = None
+if 'current_chat_id' not in st.session_state:
+    st.session_state.current_chat_id = None
 
 # --- Enhanced Configuration ---
 try:
@@ -177,14 +179,16 @@ def query_llama_agent(prompt, retries=3, max_tokens=1024):
     return "❌ LLM unavailable after retries"
 
 # --- Enhanced Code Execution ---
-def extract_and_run_code(response_text, df):
+def extract_and_run_code(response_text, df, chat_id):
     """Enhanced code execution with better error handling and visualization"""
     code_blocks = re.findall(r"```python(.*?)```", response_text, re.DOTALL)
     
     if not code_blocks:
-        return
+        return []
     
     st.subheader("🔧 Generated Code & Results")
+    
+    execution_results = []
     
     for i, code in enumerate(code_blocks):
         # Clean up code
@@ -227,6 +231,15 @@ def extract_and_run_code(response_text, df):
             sys.stdout = old_stdout
             printed_output = buffer.getvalue()
             
+            # Store execution results
+            result = {
+                'code': code,
+                'output': printed_output.strip(),
+                'has_plots': bool(plt.get_fignums()),
+                'execution_time': datetime.now()
+            }
+            execution_results.append(result)
+            
             # Display text output
             if printed_output:
                 st.subheader("📊 Output")
@@ -242,11 +255,95 @@ def extract_and_run_code(response_text, df):
             
         except Exception as e:
             sys.stdout = old_stdout
-            st.error(f"❌ Execution error: {str(e)}")
+            error_msg = f"❌ Execution error: {str(e)}"
+            st.error(error_msg)
             st.code(str(e))
+            
+            # Store error in results
+            result = {
+                'code': code,
+                'error': str(e),
+                'execution_time': datetime.now()
+            }
+            execution_results.append(result)
         finally:
             # Clean up any remaining plots
             plt.close('all')
+    
+    return execution_results
+
+# --- Enhanced Chat History Management ---
+def add_to_chat_history(question, response, data_type, execution_results=None):
+    """Add a complete conversation entry to chat history"""
+    chat_entry = {
+        'id': f"chat_{len(st.session_state.chat_history)}_{int(time.time())}",
+        'question': question,
+        'response': response,
+        'timestamp': datetime.now(),
+        'data_type': data_type,
+        'execution_results': execution_results or [],
+        'file_name': st.session_state.current_file_name
+    }
+    st.session_state.chat_history.append(chat_entry)
+    return chat_entry['id']
+
+def display_chat_history():
+    """Display the complete chat history with all messages"""
+    if not st.session_state.chat_history:
+        return
+        
+    st.subheader("💬 Conversation History")
+    
+    for i, chat in enumerate(st.session_state.chat_history):
+        timestamp = chat['timestamp'].strftime("%H:%M:%S")
+        
+        with st.expander(f"[{timestamp}] 👤 {chat['question'][:60]}...", expanded=(i == len(st.session_state.chat_history) - 1)):
+            # User question
+            st.markdown(f"**👤 User:** {chat['question']}")
+            
+            # Agent response
+            st.markdown(f"**🤖 Agent:**")
+            st.markdown(chat['response'])
+            
+            # Show execution results if any
+            if chat.get('execution_results'):
+                st.markdown("**🔧 Code Execution Results:**")
+                for j, result in enumerate(chat['execution_results']):
+                    if 'error' in result:
+                        st.error(f"Code block {j+1} failed: {result['error']}")
+                    else:
+                        st.success(f"Code block {j+1} executed successfully")
+                        if result.get('output'):
+                            st.text(result['output'])
+                        if result.get('has_plots'):
+                            st.info("📈 Visualization was generated")
+            
+            # Metadata
+            st.caption(f"File: {chat.get('file_name', 'N/A')} | Type: {chat.get('data_type', 'N/A')}")
+            
+            # Re-run button
+            if st.button(f"🔄 Re-run this query", key=f"rerun_{chat['id']}"):
+                st.session_state.selected_question = chat['question']
+                st.rerun()
+
+def export_chat_history():
+    """Export chat history as downloadable file"""
+    if not st.session_state.chat_history:
+        return None
+    
+    export_data = []
+    for chat in st.session_state.chat_history:
+        export_entry = {
+            'timestamp': chat['timestamp'].isoformat(),
+            'file_name': chat.get('file_name', ''),
+            'question': chat['question'],
+            'response': chat['response'],
+            'data_type': chat.get('data_type', ''),
+            'execution_count': len(chat.get('execution_results', []))
+        }
+        export_data.append(export_entry)
+    
+    return pd.DataFrame(export_data)
 
 # --- Data Insights Generator ---
 def generate_data_insights(df):
@@ -287,37 +384,49 @@ with st.sidebar:
         max_tokens = st.slider("Max Tokens", 100, 2048, 1024)
         temperature = st.slider("Temperature", 0.0, 1.0, 0.7)
     
+    # Chat history management
+    if st.session_state.chat_history:
+        st.header("💬 Chat Management")
+        
+        # Export chat history
+        export_df = export_chat_history()
+        if export_df is not None:
+            csv = export_df.to_csv(index=False)
+            st.download_button(
+                label="📥 Export Chat History",
+                data=csv,
+                file_name=f"chat_history_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv"
+            )
+        
+        # Chat statistics
+        st.metric("Total Conversations", len(st.session_state.chat_history))
+        
+        # Clear history button
+        if st.button("🗑️ Clear All History"):
+            st.session_state.chat_history = []
+            st.rerun()
+    
     # Quick actions
     st.header("⚡ Quick Actions")
     if st.session_state.current_data is not None:
         if st.button("📈 Quick Data Summary"):
-            st.session_state.chat_history.append({
-                'question': 'Generate a comprehensive data summary',
-                'timestamp': datetime.now(),
-                'type': 'quick_action'
-            })
+            st.session_state.selected_question = 'Generate a comprehensive data summary with key statistics and insights'
         
         if st.button("🔍 Find Correlations"):
-            st.session_state.chat_history.append({
-                'question': 'Find and visualize correlations in the data',
-                'timestamp': datetime.now(),
-                'type': 'quick_action'
-            })
+            st.session_state.selected_question = 'Find and visualize correlations in the data with heatmap and scatter plots'
+        
+        if st.button("📊 Create Dashboard"):
+            st.session_state.selected_question = 'Create a comprehensive dashboard with multiple visualizations showing key insights'
     
-    # Chat history
+    # Recent questions quick access
     if st.session_state.chat_history:
-        st.header("💬 Chat History")
-        for i, chat in enumerate(reversed(st.session_state.chat_history[-8:])):  # Show last 8
+        st.header("🕒 Recent Questions")
+        for i, chat in enumerate(reversed(st.session_state.chat_history[-5:])):  # Show last 5
             timestamp = chat['timestamp'].strftime("%H:%M")
-            chat_preview = f"👤: {chat['question'][:35]}..."
-            if st.button(f"[{timestamp}] {chat_preview}", key=f"history_{i}"):
+            chat_preview = f"{chat['question'][:30]}..."
+            if st.button(f"[{timestamp}] {chat_preview}", key=f"recent_{i}"):
                 st.session_state.selected_question = chat['question']
-    
-    # Clear history button
-    if st.session_state.chat_history:
-        if st.button("🗑️ Clear History"):
-            st.session_state.chat_history = []
-            st.rerun()
 
 # --- Main Interface ---
 st.title("📊 Advanced Data Analyst Agent")
@@ -333,7 +442,10 @@ uploaded_file = st.file_uploader(
 if uploaded_file:
     # Check if this is a new file
     if st.session_state.current_file_name != uploaded_file.name:
-        st.session_state.chat_history = []  # Clear history for new file
+        # Don't clear history automatically - let user decide
+        if st.session_state.chat_history:
+            if st.button("🗑️ New file detected. Clear chat history?"):
+                st.session_state.chat_history = []
         st.session_state.current_file_name = uploaded_file.name
     
     with st.spinner("Processing file..."):
@@ -361,18 +473,9 @@ if uploaded_file:
             preview_text = parsed_data[:1000] + "..." if len(parsed_data) > 1000 else parsed_data
             st.text_area("Content Preview", preview_text, height=200)
         
-
-        
-        # Display chat history
+        # Display complete chat history
         if st.session_state.chat_history:
-            st.subheader("💬 Previous Conversations")
-            with st.expander("View Chat History", expanded=False):
-                for i, chat in enumerate(st.session_state.chat_history):
-                    timestamp = chat['timestamp'].strftime("%H:%M:%S")
-                    st.markdown(f"**[{timestamp}] 👤 User:** {chat['question']}")
-                    if 'response' in chat:
-                        st.markdown(f"**🤖 Agent:** {chat['response'][:300]}...")
-                    st.markdown("---")
+            display_chat_history()
         
         # Question interface
         st.subheader("💬 Ask Your Question")
@@ -380,44 +483,38 @@ if uploaded_file:
         # Suggested questions
         if data_type == "dataframe":
             suggested_questions = [
-                "What are the main patterns in this data?",
-                "Show me statistical summaries for all columns",
-                "Create visualizations for the most important relationships",
-                "Are there any outliers or anomalies?",
-                "What insights can you derive from this dataset?"
+                "What are the main patterns and trends in this data?",
+                "Show me statistical summaries and distributions for all columns",
+                "Create comprehensive visualizations for the most important relationships",
+                "Are there any outliers, anomalies, or data quality issues?",
+                "Generate a complete analysis report with key insights and recommendations"
             ]
         else:
             suggested_questions = [
-                "Summarize the key points in this document",
-                "What are the main themes discussed?",
-                "Extract important facts and figures",
-                "Identify any conclusions or recommendations"
+                "Summarize the key points and main arguments in this document",
+                "What are the main themes, topics, and conclusions discussed?",
+                "Extract all important facts, figures, and data points",
+                "Identify any recommendations, action items, or next steps mentioned"
             ]
         
         st.write("**Suggested questions:**")
-        cols = st.columns(len(suggested_questions))
+        cols = st.columns(min(3, len(suggested_questions)))
         for i, suggestion in enumerate(suggested_questions):
-            if cols[i % len(cols)].button(suggestion, key=f"suggest_{i}"):
+            col_idx = i % len(cols)
+            if cols[col_idx].button(suggestion, key=f"suggest_{i}"):
                 st.session_state.selected_question = suggestion
         
         # Question input
         question = st.text_input(
             "Type your question:",
             value=getattr(st.session_state, 'selected_question', ''),
-            placeholder="e.g., What trends do you see in the data?"
+            placeholder="e.g., What trends do you see in the data? Create visualizations to show key insights."
         )
         
         col1, col2 = st.columns([1, 4])
         ask_button = col1.button("🚀 Ask", type="primary")
         
         if ask_button and question:
-            # Add to chat history
-            chat_entry = {
-                'question': question,
-                'timestamp': datetime.now(),
-                'type': 'user_question'
-            }
-            
             with st.spinner("🤔 Analyzing..."):
                 if data_type == "dataframe":
                     # Build conversation context from chat history
@@ -426,8 +523,7 @@ if uploaded_file:
                         conversation_context = "\n\nPrevious conversation context:\n"
                         for i, prev_chat in enumerate(st.session_state.chat_history[-3:]):  # Last 3 exchanges
                             conversation_context += f"User Q{i+1}: {prev_chat['question']}\n"
-                            if 'response' in prev_chat:
-                                conversation_context += f"Agent A{i+1}: {prev_chat['response'][:400]}...\n\n"
+                            conversation_context += f"Agent A{i+1}: {prev_chat['response'][:400]}...\n\n"
                     
                     # Enhanced context for dataframes
                     context = f"""
@@ -445,7 +541,7 @@ Statistical Summary:
 """
                     
                     # Check if user is asking for visualization
-                    viz_keywords = ['plot', 'chart', 'graph', 'visualiz', 'show', 'display', 'draw', 'histogram', 'scatter', 'bar chart', 'line chart', 'heatmap', 'boxplot', 'distribution']
+                    viz_keywords = ['plot', 'chart', 'graph', 'visualiz', 'show', 'display', 'draw', 'histogram', 'scatter', 'bar chart', 'line chart', 'heatmap', 'boxplot', 'distribution', 'dashboard']
                     needs_visualization = any(keyword in question.lower() for keyword in viz_keywords)
                     
                     if needs_visualization:
@@ -463,10 +559,11 @@ The user is asking for visualizations. Please provide:
 Important guidelines for code:
 - Use 'df' as the variable name for the dataset
 - Create visualizations using matplotlib/seaborn as requested
-- Use plt.figure(figsize=(10, 6)) to create properly sized plots
+- Use plt.figure(figsize=(12, 8)) to create properly sized plots
 - Do NOT use plt.show() - Streamlit will handle plot display
 - Always include proper labels, titles, and legends for plots
 - For multiple plots, create separate figure instances
+- Use professional styling and clear, readable plots
 
 Generate the specific visualizations requested by the user."""
                     else:
@@ -495,8 +592,7 @@ Important guidelines:
                         conversation_context = "\n\nPrevious conversation context:\n"
                         for i, prev_chat in enumerate(st.session_state.chat_history[-3:]):
                             conversation_context += f"User Q{i+1}: {prev_chat['question']}\n"
-                            if 'response' in prev_chat:
-                                conversation_context += f"Agent A{i+1}: {prev_chat['response'][:400]}...\n\n"
+                            conversation_context += f"Agent A{i+1}: {prev_chat['response'][:400]}...\n\n"
                     
                     preview = parsed_data[:3000]
                     prompt = f"""You are a document analysis expert. Analyze this document and answer the user's question.
@@ -511,19 +607,18 @@ Please provide a detailed analysis answering the question with specific referenc
 
                 response = query_llama_agent(prompt, max_tokens=max_tokens)
                 
-                # Add response to chat entry
-                chat_entry['response'] = response
-            
-            # Add to chat history
-            st.session_state.chat_history.append(chat_entry)
-            
-            # Display response
-            st.subheader("🧠 Analysis Results")
-            st.markdown(response)
-            
-            # Execute code if dataframe
-            if data_type == "dataframe" and "```python" in response:
-                extract_and_run_code(response, parsed_data)
+                # Display response immediately
+                st.subheader("🧠 Analysis Results")
+                st.markdown(response)
+                
+                # Execute code if dataframe and get results
+                execution_results = []
+                if data_type == "dataframe" and "```python" in response:
+                    execution_results = extract_and_run_code(response, parsed_data, st.session_state.current_chat_id)
+                
+                # Save complete conversation to history
+                chat_id = add_to_chat_history(question, response, data_type, execution_results)
+                st.session_state.current_chat_id = chat_id
             
             # Clear selected question
             if hasattr(st.session_state, 'selected_question'):
@@ -538,15 +633,16 @@ else:
     1. **Upload your data** - CSV, Excel, PDF, Word docs, or images
     2. **Ask questions** - Use natural language to query your data
     3. **Get insights** - Receive analysis, visualizations, and code
-    4. **Interact** - Run generated code blocks and explore further
+    4. **Review history** - All conversations are saved and can be exported
+    5. **Re-run queries** - Click on previous conversations to run them again
     
     **Example questions:**
-    - "What are the trends in sales over time?"
-    - "Show me correlations between variables"
-    - "Are there any outliers in the data?"
-    - "Create a dashboard view of key metrics"
+    - "What are the trends in sales over time? Show me visualizations."
+    - "Show me correlations between variables with heatmaps"
+    - "Are there any outliers in the data? Create box plots to show them."
+    - "Create a comprehensive dashboard view of key metrics"
     """)
 
 # Footer
 st.markdown("---")
-st.markdown("Built with ❤️ using Streamlit • Enhanced Data Analysis Agent")
+st.markdown("Built with ❤️ using Streamlit • Enhanced Data Analysis Agent with Persistent Chat History")
