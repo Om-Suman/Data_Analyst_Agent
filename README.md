@@ -112,7 +112,7 @@ LLAMA_MODEL_ID = "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8"
 ### Starting the Application
 
 ```bash
-streamlit app.py
+streamlit run app.py
 ```
 
 ### Basic Workflow
