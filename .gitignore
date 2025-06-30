@@ -1,2 +1,4 @@
 # hide sensitive information
 .streamlit/secrets.toml
+.__pycache__/
+# Python cache files
