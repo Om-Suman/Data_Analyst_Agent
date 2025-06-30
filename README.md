@@ -112,7 +112,7 @@ LLAMA_MODEL_ID = "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8"
 ### Starting the Application
 
 ```bash
-streamlit run data_analyst_app.py
+streamlit app.py
 ```
 
 ### Basic Workflow
@@ -212,68 +212,6 @@ streamlit run data_analyst_app.py
 - **Interactive plots**: Enable/disable interactivity
 - **Export formats**: Configure output formats
 
-## 🔧 Troubleshooting
-
-### Common Issues
-
-#### API Key Problems
-
-```
-Error: Please enter your API key to continue
-```
-
-**Solution**: Ensure API key is properly configured in secrets.toml or environment variables.
-
-#### File Upload Issues
-
-```
-Error: Unsupported file type
-```
-
-**Solution**: Check that your file is in a supported format (CSV, Excel, PDF, Word, Images).
-
-#### OCR Not Working
-
-```
-Error: pytesseract is not installed
-```
-
-**Solution**: Install Tesseract OCR system dependency and Python package.
-
-#### Memory Issues with Large Files
-
-```
-Error: File too large to process
-```
-
-**Solution**:
-
-- Split large files into smaller chunks
-- Use data sampling for initial analysis
-- Increase system memory if possible
-
-#### Code Execution Errors
-
-```
-Error: Execution error in generated code
-```
-
-**Solution**:
-
-- Check data quality and format
-- Review error messages in the output
-- Try rephrasing your question
-- Use simpler analysis requests
-
-### Performance Optimization
-
-#### For Large Datasets
-
-- Sample data for initial exploration
-- Use specific column analysis
-- Limit visualization complexity
-- Consider data aggregation
-
 #### For Better AI Responses
 
 - Be specific in your questions
@@ -284,7 +222,7 @@ Error: Execution error in generated code
 ## 📋 File Structure
 
 ```
-data_analyst_app.py          # Main application file
+├── app.py                   # Main application file
 ├── .streamlit/
 │   └── secrets.toml         # API key configuration
 ├── requirements.txt         # Python dependencies
@@ -298,14 +236,6 @@ data_analyst_app.py          # Main application file
 - **Data Privacy**: Uploaded data is processed locally and not stored permanently
 - **Code Execution**: Generated code runs in a controlled environment
 - **File Handling**: Only supported file types are processed
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
 
 ## 📄 License
 
@@ -321,14 +251,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Tesseract OCR** - For image text extraction
 
 ## 📞 Support
-
-If you encounter any issues or have questions:
-
-1. Check the troubleshooting section above
-2. Review the error messages carefully
-3. Ensure all dependencies are properly installed
-4. Verify your API key configuration
-5. Open an issue on GitHub with detailed error information
 
 ## 🔄 Updates and Roadmap
 
