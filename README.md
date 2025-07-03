@@ -197,13 +197,6 @@ streamlit run app.py
 - **Interactive plots**: Enable/disable interactivity
 - **Export formats**: Configure output formats
 
-#### For Better AI Responses
-
-- Be specific in your questions
-- Provide context about your goals
-- Use domain-specific terminology
-- Build upon previous questions
-
 ## 📋 File Structure
 
 ```
@@ -214,26 +207,6 @@ streamlit run app.py
 ├── README.md               # This file
 └── data/                   # Sample data files (optional)
 ```
-
-## 🛡️ Security Notes
-
-- **API Keys**: Keep your API keys secure and never commit them to version control
-- **Data Privacy**: Uploaded data is processed locally and not stored permanently
-- **Code Execution**: Generated code runs in a controlled environment
-- **File Handling**: Only supported file types are processed
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **Streamlit** - For the amazing web app framework
-- **Together AI** - For LLM API services
-- **Pandas & NumPy** - For data manipulation
-- **Matplotlib & Seaborn** - For visualization
-- **PyMuPDF & python-docx** - For document processing
-- **Tesseract OCR** - For image text extraction
 
 ## 📞 Support
 
