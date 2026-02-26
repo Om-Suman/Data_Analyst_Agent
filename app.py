@@ -40,13 +40,14 @@ if 'data_summary_cache' not in st.session_state:
     st.session_state.data_summary_cache = {}
 
 # --- API Configuration ---
+# --- API Configuration ---
+import streamlit as st
+
 try:
-    api_key = st.secrets["API_KEY"]
-except:
-    api_key = st.sidebar.text_input("Enter API Key", type="password")
-    if not api_key:
-        st.warning("Please enter your API key to continue")
-        st.stop()
+    api_key = st.secrets["TOGETHER_API_KEY"]
+except KeyError:
+    st.error("⚙️ Server configuration in progress. Please refresh in a few seconds.")
+    st.stop()
 
 LLAMA_MODEL_ID = "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8"
 
