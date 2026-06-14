@@ -1,4 +1,106 @@
-# hide sensitive information
-.streamlit/secrets.toml
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+wheels/
+pip-wheel-metadata/
+.installed.cfg
+
+# Virtual Environments
+venv/
+env/
+ENV/
+.venv/
+.env/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# API Keys & Secrets
+*.env
+.env.*
+secrets.toml
+config.secret.*
+
+# Data files (potentially sensitive)
+data/
+exports/
+reports/
+*.csv
+*.xlsx
+*.xls
+*.json
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploaded files
+uploads/
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Logs
+*.log
+logs/
+*.out
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+nosetests.xml
+coverage.xml
+
+# Distribution
+.eggs/
+lib/
+lib64/
+*.so
+
+# Mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Profiling
+*.prof
+
+# Temp files
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
