@@ -96,6 +96,7 @@ def normalize_column_names(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
 def fill_missing(df: pd.DataFrame, strategy: str, custom_value=None, columns=None) -> tuple[pd.DataFrame, dict]:
     """Fill missing values per strategy."""
     cols = columns or df.columns.tolist()
+    cols = [col for col in cols if col in df.columns]
     filled = {}
 
     for col in cols:
@@ -154,9 +155,12 @@ def clean_dataframe(df: pd.DataFrame, config: CleaningConfig) -> tuple[pd.DataFr
     df = df.copy()
 
     # 1. Normalize column names
+    columns_to_clean = config.columns_to_clean
     if config.normalize_column_names:
         df, renames = normalize_column_names(df)
         report.col_renames = renames
+        if columns_to_clean:
+            columns_to_clean = [renames.get(col, col) for col in columns_to_clean]
 
     # 2. Fix dtypes
     if config.fix_dtypes:
@@ -190,7 +194,7 @@ def clean_dataframe(df: pd.DataFrame, config: CleaningConfig) -> tuple[pd.DataFr
 
     # 4. Handle missing values
     if config.missing_strategy != "none":
-        df, filled = fill_missing(df, config.missing_strategy, config.custom_fill_value, config.columns_to_clean)
+        df, filled = fill_missing(df, config.missing_strategy, config.custom_fill_value, columns_to_clean)
         report.missing_filled = filled
         if config.missing_strategy == "drop_cols":
             report.cols_dropped = [c for c, v in filled.items() if v == "dropped"]

@@ -1,4 +1,5 @@
 """Data Cleaning Page."""
+import io
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -89,6 +90,7 @@ def render():
         # Dtype overview
         dtype_df = df.dtypes.reset_index()
         dtype_df.columns = ["Column", "Type"]
+        dtype_df["Type"] = dtype_df["Type"].astype(str)
         st.dataframe(dtype_df, use_container_width=True, height=200)
 
     # --- Run Cleaning ---
@@ -143,6 +145,27 @@ def render():
             for rec in report.recommendations:
                 st.write(f"- {rec}")
 
+        st.markdown("### Download Cleaned Dataset")
+        csv_bytes = cleaned_df.to_csv(index=False).encode("utf-8")
+        excel_bytes = _to_excel_bytes(cleaned_df)
+        safe_name = _safe_download_name(name)
+
+        download_col1, download_col2, _ = st.columns([1, 1, 4])
+        download_col1.download_button(
+            "Download CSV",
+            data=csv_bytes,
+            file_name=f"{safe_name}_cleaned.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+        download_col2.download_button(
+            "Download Excel",
+            data=excel_bytes,
+            file_name=f"{safe_name}_cleaned.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True,
+        )
+
         # Apply to session
         col_apply, col_discard = st.columns([1, 5])
         if col_apply.button("✅ Apply Cleaning", type="primary"):
@@ -157,6 +180,18 @@ def render():
             })
             st.success("✅ Cleaned dataset applied!")
             st.rerun()
+
+def _to_excel_bytes(df: pd.DataFrame) -> bytes:
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Cleaned Data")
+    return buffer.getvalue()
+
+
+def _safe_download_name(name: str) -> str:
+    base_name = str(name).rsplit(".", 1)[0]
+    safe_name = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in base_name)
+    return safe_name or "dataset"
 
 
 def _grade_icon(grade):
