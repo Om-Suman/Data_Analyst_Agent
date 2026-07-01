@@ -11,8 +11,9 @@ import json
 import re
 
 HF_URL = "https://router.huggingface.co/v1/chat/completions"
-PRIMARY_MODEL = "Qwen/Qwen3-32B"
-FALLBACK_MODEL = "deepseek-ai/DeepSeek-R1"
+PRIMARY_MODEL = "deepseek-ai/DeepSeek-R1"
+FALLBACK_MODEL = ""
+FATAL_STATUS_CODES = {400, 401, 402, 403, 404}
 
 
 def clean_response(text: str) -> str:
@@ -39,6 +40,7 @@ def _call_hf(
     messages: list,
     max_tokens: int,
     temperature: float,
+    timeout: int,
 ) -> str:
 
     api_key = st.session_state.get("hf_api_key", "")
@@ -66,13 +68,15 @@ def _call_hf(
         HF_URL,
         headers=headers,
         json=payload,
-        timeout=60,
+        timeout=timeout,
     )
 
     if not resp.ok:
-        raise Exception(
+        http_error = requests.exceptions.HTTPError(
             f"HTTP {resp.status_code}: {resp.text}"
         )
+        http_error.response = resp
+        raise http_error
 
     data = resp.json()
 
@@ -88,12 +92,43 @@ def _call_hf(
     raise ValueError(f"Unexpected response: {data}")
 
 
+def _get_model_chain() -> list[str]:
+    """Return configured models in retry order, skipping blanks and duplicates."""
+    primary = st.session_state.get("primary_model", PRIMARY_MODEL)
+    fallback = st.session_state.get("fallback_model", FALLBACK_MODEL)
+
+    models = []
+    for model in (primary, fallback):
+        model = str(model or "").strip()
+        if model and model not in models:
+            models.append(model)
+
+    return models or [PRIMARY_MODEL]
+
+
+def _friendly_http_error(status: int, body: str) -> str:
+    if status == 402:
+        return (
+            "Hugging Face Inference Providers rejected the request because "
+            "your monthly included credits are depleted. Add prepaid credits, "
+            "upgrade to Pro, or switch to a local/free provider before running AI queries."
+        )
+    if status == 401:
+        return "Hugging Face rejected the API key. Check or replace your HF_API_KEY."
+    if status == 403:
+        return "Hugging Face denied access to this model/provider for your account."
+    if status == 404:
+        return "The configured Hugging Face model was not found. Check the model name in Settings."
+    return f"HTTP {status}: {body}"
+
+
 def query_llm(
     system_prompt: str,
     user_prompt: str,
     max_tokens: int = 2048,
     temperature: float = 0.3,
     retries: int = 3,
+    timeout: int = 120,
 ) -> tuple[str, str]:
     """
     Returns:
@@ -105,7 +140,7 @@ def query_llm(
         {"role": "user", "content": user_prompt},
     ]
 
-    models = [PRIMARY_MODEL, FALLBACK_MODEL]
+    models = _get_model_chain()
     last_error = ""
 
     for model in models:
@@ -119,6 +154,7 @@ def query_llm(
                     messages=messages,
                     max_tokens=max_tokens,
                     temperature=temperature,
+                    timeout=timeout,
                 )
 
                 return text, model
@@ -130,12 +166,21 @@ def query_llm(
                     if e.response
                     else 0
                 )
+                body = e.response.text if e.response is not None else str(e)
 
                 if status == 429:
 
                     wait = 2 ** attempt
                     time.sleep(wait)
                     continue
+
+                elif status in FATAL_STATUS_CODES:
+
+                    last_error = _friendly_http_error(status, body)
+                    return (
+                        f"âŒ LLM error: {last_error}",
+                        "none",
+                    )
 
                 elif status in (500, 503):
 
@@ -220,4 +265,3 @@ def extract_json(text: str) -> dict | list | None:
         pass
 
     return None
-

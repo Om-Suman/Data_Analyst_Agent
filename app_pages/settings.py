@@ -21,8 +21,8 @@ def render():
 
         st.markdown("---")
         st.markdown("### 🤖 Model Configuration")
-        primary = st.text_input("Primary Model", value=st.session_state.get("primary_model", "Qwen/Qwen3-32B"))
-        fallback = st.text_input("Fallback Model", value=st.session_state.get("fallback_model", "deepseek-ai/DeepSeek-R1"))
+        primary = st.text_input("Primary Model", value=st.session_state.get("primary_model", "deepseek-ai/DeepSeek-R1"))
+        fallback = st.text_input("Fallback Model", value=st.session_state.get("fallback_model", ""))
         if st.button("Save Model Config"):
             st.session_state.primary_model = primary
             st.session_state.fallback_model = fallback

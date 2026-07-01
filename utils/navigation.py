@@ -8,6 +8,7 @@ PAGES = {
     "🧹 Data Cleaning": "cleaning",
     "🔍 Data Explorer": "explorer",
     "🤖 AI Query": "ai_query",
+    "📚 Document QA": "document_qa",
     "📈 Visualizations": "visualizations",
     "💡 Insights": "insights",
     "🔮 Forecasting": "forecasting",
@@ -181,6 +182,9 @@ def _route_page(page_id):
 
     elif page_id == "ai_query":
         from app_pages.ai_query import render
+
+    elif page_id == "document_qa":
+        from app_pages.document_qa import render
 
     elif page_id == "visualizations":
         from app_pages.visualizations import render

@@ -86,7 +86,7 @@ def _render_controls(df, chart_type, numeric_cols, cat_cols, date_cols, all_cols
 
     elif chart_type == "Pie Chart":
         st.session_state["viz_names"] = st.selectbox("Labels", cat_cols, key="pie_names")
-        st.session_state["viz_values"] = st.selectbox("Values", numeric_cols, key="pie_values")
+        st.session_state["viz_values"] = st.selectbox("Values", all_cols, key="pie_values")
         st.session_state["viz_top_n"] = st.slider("Top N slices", 3, 20, 8)
         st.session_state["viz_hole"] = st.slider("Donut Hole", 0.0, 0.8, 0.0, 0.1)
 
@@ -115,7 +115,7 @@ def _render_controls(df, chart_type, numeric_cols, cat_cols, date_cols, all_cols
 
     elif chart_type == "Funnel Chart":
         st.session_state["viz_x"] = st.selectbox("Stage (category)", cat_cols, key="fun_x")
-        st.session_state["viz_y"] = st.selectbox("Value", numeric_cols, key="fun_y")
+        st.session_state["viz_y"] = st.selectbox("Value", all_cols, key="fun_y")
 
     elif chart_type == "KPI Dashboard":
         st.session_state["viz_kpi_cols"] = st.multiselect("KPI Metrics", numeric_cols, default=numeric_cols[:4])
@@ -157,8 +157,8 @@ def _build_fig(df, chart_type, template, colorscale, numeric_cols, cat_cols):
         barmode = ss.get("viz_barmode", "group")
         if not x or not y:
             return None
-        agg = df.groupby(x)[y].sum().nlargest(top_n).reset_index()
-        return px.bar(agg, x=x, y=y, color=color if color and color in agg.columns else None,
+        agg, y_plot = _aggregate_top_values(df, x, y, top_n)
+        return px.bar(agg, x=x, y=y_plot, color=color if color and color in agg.columns else None,
                       barmode=barmode, template=template, color_discrete_sequence=px.colors.qualitative.Set2)
 
     elif chart_type == "Line Chart":
@@ -207,8 +207,8 @@ def _build_fig(df, chart_type, template, colorscale, numeric_cols, cat_cols):
         hole = ss.get("viz_hole", 0.0)
         if not names or not values:
             return None
-        agg = df.groupby(names)[values].sum().nlargest(top_n).reset_index()
-        return px.pie(agg, names=names, values=values, hole=hole, template=template)
+        agg, values_plot = _aggregate_top_values(df, names, values, top_n)
+        return px.pie(agg, names=names, values=values_plot, hole=hole, template=template)
 
     elif chart_type == "Area Chart":
         x = ss.get("viz_x")
@@ -254,8 +254,8 @@ def _build_fig(df, chart_type, template, colorscale, numeric_cols, cat_cols):
         y = ss.get("viz_y")
         if not x or not y:
             return None
-        agg = df.groupby(x)[y].sum().reset_index().sort_values(y, ascending=False)
-        return px.funnel(agg, x=y, y=x, template=template)
+        agg, y_plot = _aggregate_top_values(df, x, y, len(df))
+        return px.funnel(agg, x=y_plot, y=x, template=template)
 
     elif chart_type == "KPI Dashboard":
         kpi_cols = ss.get("viz_kpi_cols", numeric_cols[:4])
@@ -280,5 +280,64 @@ def _build_fig(df, chart_type, template, colorscale, numeric_cols, cat_cols):
             height=200,
         )
         return fig
+
+    return None
+
+
+def _aggregate_top_values(df: pd.DataFrame, group_col: str, value_col: str, top_n: int) -> tuple[pd.DataFrame, str]:
+    """Aggregate chart values safely for numeric, yes/no, and text columns."""
+    work = df[[group_col, value_col]].copy()
+    positive_mask = _positive_boolean_mask(work[value_col])
+
+    if positive_mask is not None:
+        y_plot = f"{value_col}_count"
+        work[y_plot] = positive_mask.astype(int)
+        agg = (
+            work.groupby(group_col, dropna=False)[y_plot]
+            .sum()
+            .sort_values(ascending=False)
+            .head(top_n)
+            .reset_index()
+        )
+        return agg, y_plot
+
+    numeric_values = pd.to_numeric(work[value_col], errors="coerce")
+    if numeric_values.notna().any():
+        work[value_col] = numeric_values.fillna(0)
+        agg = (
+            work.groupby(group_col, dropna=False)[value_col]
+            .sum()
+            .sort_values(ascending=False)
+            .head(top_n)
+            .reset_index()
+        )
+        return agg, value_col
+
+    agg = (
+        work.groupby(group_col, dropna=False)
+        .size()
+        .sort_values(ascending=False)
+        .head(top_n)
+        .reset_index(name="count")
+    )
+    return agg, "count"
+
+
+def _positive_boolean_mask(series: pd.Series) -> pd.Series | None:
+    """Return a true-value mask for boolean-like columns, otherwise None."""
+    if pd.api.types.is_bool_dtype(series):
+        return series.fillna(False)
+
+    normalized = series.dropna().astype(str).str.strip().str.lower()
+    if normalized.empty:
+        return None
+
+    positive_values = {"yes", "y", "true", "t", "1", "has_chip", "chip", "chipped"}
+    negative_values = {"no", "n", "false", "f", "0", "none", "nan", ""}
+    allowed_values = positive_values | negative_values
+
+    if normalized.isin(allowed_values).all() and normalized.nunique() <= 2:
+        full_normalized = series.astype(str).str.strip().str.lower()
+        return full_normalized.isin(positive_values)
 
     return None

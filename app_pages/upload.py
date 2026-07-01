@@ -2,7 +2,8 @@
 import streamlit as st
 import pandas as pd
 from modules.ingestion import parse_uploaded_file
-from utils.session import register_dataset
+from modules.document_rag import build_document_bundle, store_document_bundle
+from utils.session import register_dataset, register_text_dataset
 
 
 def render():
@@ -84,14 +85,10 @@ def _process_file(uploaded_file):
         content = meta.get("content", "")
         st.info(f"📄 Text document loaded: {len(content):,} characters")
         st.text_area("Content Preview", content[:2000], height=200)
-        # Store as a "text" entry (not a DataFrame)
-        st.session_state.datasets[uploaded_file.name] = {
-            "df": None, "name": uploaded_file.name, "source": uploaded_file.name,
-            "rows": 0, "cols": 0, "meta": meta, "text_content": content,
-            "version": 1, "transformations": [],
-        }
-        from datetime import datetime
-        st.session_state.datasets[uploaded_file.name]["uploaded_at"] = datetime.now()
+        register_text_dataset(uploaded_file.name, content, source=uploaded_file.name, meta=meta)
+        bundle = build_document_bundle(content, metadata={"name": uploaded_file.name, **meta})
+        store_document_bundle(uploaded_file.name, bundle)
+        st.success(f"✅ Indexed text document: {uploaded_file.name}")
 
 
 def _render_sample_loader():

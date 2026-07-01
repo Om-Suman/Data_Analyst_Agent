@@ -17,8 +17,8 @@ def load_config():
     st.session_state.hf_api_key = api_key
 
     # Model config
-    st.session_state.primary_model = "Qwen/Qwen3-32B"
-    st.session_state.fallback_model = "deepseek-ai/DeepSeek-R1"
+    st.session_state.primary_model = st.session_state.get("primary_model", "deepseek-ai/DeepSeek-R1")
+    st.session_state.fallback_model = st.session_state.get("fallback_model", "")
     st.session_state.hf_inference_url = "https://api-inference.huggingface.co/v1/chat/completions"
 
     # App defaults

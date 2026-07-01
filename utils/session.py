@@ -5,6 +5,7 @@ from datetime import datetime
 DEFAULTS = {
     "active_page": "Dashboard",
     "datasets": {},           # registry: name -> DatasetRecord
+    "document_indexes": {},    # registry: name -> LlamaIndex bundle
     "active_dataset": None,   # name of currently active dataset
     "query_history": [],      # list of QueryRecord dicts
     "chat_messages": [],      # list of {role, content, timestamp}
@@ -55,6 +56,27 @@ def register_dataset(name, df, source="upload", meta=None):
     if name not in st.session_state.dataset_versions:
         st.session_state.dataset_versions[name] = []
     _snapshot_version(name, "Initial load")
+    return record
+
+
+def register_text_dataset(name, content, source="upload", meta=None):
+    """Register a text-only dataset in the session registry."""
+    if meta is None:
+        meta = {}
+    record = {
+        "df": None,
+        "name": name,
+        "source": source,
+        "uploaded_at": datetime.now(),
+        "rows": 0,
+        "cols": 0,
+        "meta": meta,
+        "text_content": content,
+        "version": 1,
+        "transformations": [],
+    }
+    st.session_state.datasets[name] = record
+    st.session_state.active_dataset = name
     return record
 
 def _snapshot_version(name, description=""):

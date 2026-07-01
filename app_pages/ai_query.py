@@ -2,7 +2,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from modules.query_engine import run_query
+from modules.langchain_query import langchain_available, run_query_langchain
 from utils.session import get_active_df, add_query_to_history
 import matplotlib
 matplotlib.use("Agg")
@@ -56,7 +56,8 @@ def render():
     # Model info
     primary = st.session_state.get("primary_model", "Qwen/Qwen3-32B")
     fallback = st.session_state.get("fallback_model", "deepseek-ai/DeepSeek-R1")
-    st.caption(f"Primary: `{primary}` | Fallback: `{fallback}`")
+    engine_label = "LangChain" if langchain_available() else "Fallback orchestration"
+    st.caption(f"Engine: {engine_label} | Primary: `{primary}` | Fallback: `{fallback}`")
 
     # --- Suggested Questions ---
     with st.expander("💡 Suggested Questions", expanded=False):
@@ -89,7 +90,7 @@ def render():
     # --- Execute Query ---
     if ask_btn and question.strip():
         with st.spinner("🤔 Thinking..."):
-            result = run_query(
+            result = run_query_langchain(
                 df=df,
                 question=question,
                 history=history,
