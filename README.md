@@ -24,7 +24,7 @@ An AI-powered Streamlit application that combines deterministic analytics with L
 ### Overall Architecture
 
 <p align="center">
-  <img src="Diagrams/system_architecture.png" width="950">
+  <img src="Diagrams/system_architecture1.png" width="950">
 </p>
 
 The application follows a layered architecture consisting of:
