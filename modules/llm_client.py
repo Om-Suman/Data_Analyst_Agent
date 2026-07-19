@@ -29,6 +29,15 @@ def clean_response(text: str) -> str:
         flags=re.DOTALL | re.IGNORECASE,
     )
 
+    # Some reasoning models can be truncated before emitting </think>. Remove
+    # the unfinished trace as well so it is never shown to the user.
+    text = re.sub(
+        r"<think>.*$",
+        "",
+        text,
+        flags=re.DOTALL | re.IGNORECASE,
+    )
+
     # Remove excessive blank lines
     text = re.sub(r"\n{3,}", "\n\n", text)
 

@@ -8,6 +8,7 @@ import re
 import ast
 import time
 import traceback
+import builtins
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -24,6 +25,25 @@ BLOCKED_IMPORTS = {
     "builtins", "ctypes", "multiprocessing", "threading",
 }
 
+# Generated code cannot contain import statements, but Pandas and Plotly may
+# lazily import their own internals while methods such as Timestamp.strftime()
+# run. Expose a narrowly scoped import hook for those library internals rather
+# than removing Python's import mechanism completely.
+SAFE_IMPORT_ROOTS = {
+    "pandas", "numpy", "plotly", "matplotlib", "seaborn", "sklearn", "scipy",
+    "dateutil", "pytz", "tzdata", "datetime", "math", "statistics", "re",
+    "collections", "functools", "itertools", "typing", "warnings", "json",
+    "calendar", "locale", "time", "decimal", "numbers", "copy", "operator",
+}
+
+
+def _safe_import(name, globals=None, locals=None, fromlist=(), level=0):
+    """Allow imports needed by approved analytics libraries, not user code."""
+    root = str(name).split(".", 1)[0]
+    if root not in SAFE_IMPORT_ROOTS:
+        raise ImportError(f"Import of '{root}' is not permitted in the analysis sandbox.")
+    return builtins.__import__(name, globals, locals, fromlist, level)
+
 ALLOWED_GLOBALS = {
     "pd": pd, "pandas": pd,
     "np": np, "numpy": np,
@@ -38,7 +58,7 @@ ALLOWED_GLOBALS = {
     "sum": sum, "min": min, "max": max, "abs": abs, "round": round,
     "sorted": sorted, "reversed": reversed,
     "isinstance": isinstance, "type": type,
-    "__builtins__": {},
+    "__builtins__": {"__import__": _safe_import},
 }
 
 class ExecutionResult:

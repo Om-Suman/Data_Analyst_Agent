@@ -2,7 +2,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from modules.langchain_query import langchain_available, run_query_langchain
+from modules.langchain_query import langchain_available, run_routed_query
 from utils.session import get_active_df, add_query_to_history
 import matplotlib
 matplotlib.use("Agg")
@@ -40,12 +40,14 @@ SUGGESTED_QUESTIONS = {
 def render():
     st.title("🤖 AI Query Assistant")
 
+    name = st.session_state.active_dataset
     df = get_active_df()
-    if df is None:
-        st.warning("No dataset loaded. Please upload data first.")
+    active_record = st.session_state.get("datasets", {}).get(name, {})
+    is_document = bool(active_record.get("text_content"))
+    if df is None and not is_document:
+        st.warning("No dataset or text document loaded. Please upload data first.")
         return
 
-    name = st.session_state.active_dataset
     history = st.session_state.get("query_history", [])
 
     # API key check
@@ -90,11 +92,12 @@ def render():
     # --- Execute Query ---
     if ask_btn and question.strip():
         with st.spinner("🤔 Thinking..."):
-            result = run_query_langchain(
-                df=df,
+            result = run_routed_query(
                 question=question,
+                df=df,
                 history=history,
                 max_tokens=st.session_state.get("max_tokens", 2048),
+                document_name=name if is_document else None,
             )
 
         if result.get("error"):
@@ -134,6 +137,9 @@ def render():
 def _display_result(result: dict):
     model_used = result.get("model_used", "")
     st.markdown(f"<small style='color:#718096'>Model: {model_used}</small>", unsafe_allow_html=True)
+    route = result.get("route", "dataframe_analysis").replace("_", " ").title()
+    source = result.get("routing_source", "heuristic")
+    st.caption(f"Route: {route} ({source}) — {result.get('route_reason', '')}")
 
     # Show LLM narrative (non-code parts)
     response = result.get("llm_response", "")
@@ -143,6 +149,31 @@ def _display_result(result: dict):
     if narrative:
         with st.expander("🧠 Analysis & Insights", expanded=True):
             st.markdown(narrative)
+
+    tool_result = result.get("tool_result") or {}
+    if tool_result.get("type") == "forecast":
+        forecast = tool_result["forecast"]
+        st.plotly_chart(forecast.fig, use_container_width=True)
+        if forecast.metrics:
+            st.json(forecast.metrics)
+        st.dataframe(pd.DataFrame({
+            "Period": forecast.forecast_index,
+            "Forecast": forecast.forecast_values,
+            "Lower 95% CI": forecast.confidence_lower,
+            "Upper 95% CI": forecast.confidence_upper,
+        }), use_container_width=True)
+    elif tool_result.get("type") == "anomaly":
+        anomaly = tool_result["anomaly"]
+        st.plotly_chart(anomaly.fig, use_container_width=True)
+        if not anomaly.anomaly_df.empty:
+            st.dataframe(anomaly.anomaly_df, use_container_width=True)
+    elif tool_result.get("type") == "document":
+        sources = tool_result.get("sources", [])
+        if sources:
+            with st.expander("Retrieved document context", expanded=False):
+                for index, source_text in enumerate(sources, start=1):
+                    st.markdown(f"**Chunk {index}**")
+                    st.write(source_text)
 
     # Execute and display code blocks
     exec_results = result.get("execution_results", [])

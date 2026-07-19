@@ -19,13 +19,15 @@ IMPORTANT:
 - Never reveal chain-of-thought reasoning
 - Never output <think> tags
 - Never explain internal reasoning
-- Output only Python code in one or more ```python ... ``` blocks
+- Output exactly one ```python ... ``` block and no other text
 - Do not write business insights or narrative in this first response
 
 RULES:
 - Always use 'df' as the variable name
 - For charts: use plotly express (px) or plotly graph_objects (go) — NOT plt.show() or fig.show()
 - Assign plotly figures to variables named 'fig', 'fig1', 'fig2', etc.
+- For candlestick requests, use go.Candlestick with the supplied date, open, high, low, and close columns, then add indicators such as moving averages with go.Scatter.
+- For moving averages, use the exact requested rolling window and leave the initial incomplete window values as NaN unless the user explicitly asks otherwise.
 - Use print() to output key findings/numbers
 - Keep code clean, vectorized, and efficient
 - Handle missing values gracefully
@@ -342,5 +344,4 @@ def run_query(
         result["model_used"] = f"insights:{insights_model}"
 
     return result
-
 
