@@ -25,6 +25,12 @@ def init_session_state():
         if key not in st.session_state:
             st.session_state[key] = deepcopy(default)
 
+
+def reset_session_state():
+    """Remove all state associated with the current browser session."""
+    st.session_state.clear()
+
+
 def get_active_df():
     name = st.session_state.active_dataset
     if not name or name not in st.session_state.datasets:

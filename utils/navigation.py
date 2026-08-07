@@ -1,6 +1,7 @@
 """Sidebar navigation and page routing."""
 
 import streamlit as st
+from utils.session import reset_session_state
 
 PAGES = {
     "📊 Dashboard": "dashboard",
@@ -147,18 +148,7 @@ def render_navigation():
             use_container_width=True,
             help="Clear Session",
         ):
-            keys_to_remove = [
-                "datasets",
-                "query_history",
-                "chat_messages",
-                "dataset_versions",
-            ]
-
-            for key in keys_to_remove:
-                if key in st.session_state:
-                    del st.session_state[key]
-
-            st.session_state.active_dataset = None
+            reset_session_state()
             st.rerun()
 
     # Route page
