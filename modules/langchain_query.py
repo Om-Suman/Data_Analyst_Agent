@@ -39,7 +39,7 @@ ROUTER_SYSTEM_PROMPT = """You route data-analysis questions to one safe capabili
 
 Return only JSON in this exact shape:
 {
-  "intent": "dataframe_analysis|statistical_summary|forecast|anomaly_detection|document_qa",
+  "intent": "dataframe_analysis|statistical_summary|forecast|anomaly_detection|document_qa|out_of_scope|clarification_needed",
   "reason": "short explanation",
   "column": "an explicitly mentioned column name, or empty string",
   "method": "linear_trend|moving_average|exponential_smoothing|isolation_forest|zscore|iqr, or empty string"
@@ -50,6 +50,8 @@ Choose statistical_summary for broad descriptive summaries or high-level pattern
 Choose forecast only when the user asks for a future projection.
 Choose anomaly_detection only when the user asks for anomalies, outliers, or unusual records.
 Choose document_qa only when the active input is a document.
+Choose out_of_scope for general knowledge, casual conversation, requests about the internet/current events, or any request that cannot be answered from the active input.
+Choose clarification_needed when the request is about the input but is too ambiguous to execute safely.
 Do not invent column names."""
 
 VALID_INTENTS = {
@@ -58,6 +60,8 @@ VALID_INTENTS = {
     "forecast",
     "anomaly_detection",
     "document_qa",
+    "out_of_scope",
+    "clarification_needed",
 }
 
 
@@ -68,7 +72,13 @@ def langchain_available() -> bool:
 def _heuristic_route(question: str, is_document: bool = False) -> dict:
     """Safe fallback when an LLM route cannot be parsed or is unavailable."""
     text = question.lower()
-    if is_document:
+    off_topic_phrases = (
+        "who is the president", "weather", "news", "stock price", "bitcoin price",
+        "write a poem", "tell me a joke", "capital of", "recipe", "movie recommendation",
+    )
+    if any(phrase in text for phrase in off_topic_phrases):
+        intent = "out_of_scope"
+    elif is_document:
         intent = "document_qa"
     elif any(word in text for word in ("forecast", "predict", "projection", "next month", "next quarter", "future")):
         intent = "forecast"
@@ -127,7 +137,7 @@ Available columns: {available_columns}"""
         parsed = extract_json(payload["response"])
         if not isinstance(parsed, dict) or parsed.get("intent") not in VALID_INTENTS:
             raise ValueError("Router returned an invalid intent.")
-        if is_document:
+        if is_document and parsed["intent"] not in {"out_of_scope", "clarification_needed"}:
             parsed["intent"] = "document_qa"
         elif parsed["intent"] == "document_qa":
             parsed["intent"] = "dataframe_analysis"
@@ -244,6 +254,21 @@ def _generate_code(df: pd.DataFrame, question: str, history: list | None, max_to
         }
     )
     return payload["response"], payload["model"], True
+
+
+def _scope_response(intent: str, is_document: bool) -> str:
+    """Return a safe response without invoking analysis or retrieval."""
+    subject = "the uploaded document" if is_document else "the active dataset"
+    if intent == "clarification_needed":
+        return (
+            f"I need a little more detail to analyze {subject}. "
+            "Please name the metric, column, period, comparison, or chart you want."
+        )
+    return (
+        f"That question does not appear to be answerable from {subject}. "
+        "I can help with questions grounded in the uploaded file, such as summaries, "
+        "comparisons, trends, anomalies, or document content."
+    )
 
 
 def run_query_langchain(
@@ -372,6 +397,11 @@ def run_routed_query(
     }
 
     try:
+        if intent in {"out_of_scope", "clarification_needed"}:
+            response = _scope_response(intent, is_document=is_document)
+            result.update(insights=response, llm_response=response)
+            return result
+
         if intent == "document_qa":
             if not document_name:
                 raise ValueError("Document questions require an active text document.")

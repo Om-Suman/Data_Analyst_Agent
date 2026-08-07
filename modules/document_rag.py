@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from difflib import SequenceMatcher
+import re
 
 import streamlit as st
 
@@ -39,6 +40,17 @@ Rules:
 - Keep the answer concise and grounded.
 - Do not invent facts or cite information that is not in the context.
 """
+
+# Cosine similarity from the embedding retriever is normally in the 0-1 range.
+# This conservative cutoff prevents a top-k result from being treated as evidence
+# when none of the retrieved passages is meaningfully related to the question.
+RAG_MIN_RELEVANCE_SCORE = 0.25
+FALLBACK_MIN_RELEVANCE_SCORE = 0.15
+STOP_WORDS = {
+    "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "how",
+    "in", "is", "it", "of", "on", "or", "that", "the", "this", "to", "what",
+    "when", "where", "which", "who", "why", "with", "would", "you",
+}
 
 
 def llamaindex_available() -> bool:
@@ -110,24 +122,40 @@ def get_document_bundle(name: str) -> dict | None:
     return st.session_state.get("document_indexes", {}).get(name)
 
 
-def _fallback_retrieve(question: str, chunks: list[str], top_k: int = 4) -> list[str]:
-    scored = []
-    question_words = set(question.lower().split())
+def _question_terms(question: str) -> set[str]:
+    return {
+        token for token in re.findall(r"[a-zA-Z0-9_]+", question.lower())
+        if len(token) > 2 and token not in STOP_WORDS
+    }
 
-    for chunk in chunks:
+
+def _fallback_retrieve(question: str, chunks: list[str], top_k: int = 4) -> list[dict]:
+    scored = []
+    question_words = _question_terms(question)
+
+    for chunk_index, chunk in enumerate(chunks, start=1):
         chunk_lower = chunk.lower()
-        overlap = sum(1 for word in question_words if word in chunk_lower)
-        score = overlap + SequenceMatcher(None, question_lower := question.lower(), chunk_lower).ratio()
-        scored.append((score, chunk))
+        overlap = sum(1 for word in question_words if re.search(rf"\b{re.escape(word)}\b", chunk_lower))
+        coverage = overlap / max(len(question_words), 1)
+        similarity = SequenceMatcher(None, question.lower(), chunk_lower).ratio()
+        score = (0.85 * coverage) + (0.15 * similarity)
+        scored.append((score, chunk, chunk_index))
 
     scored.sort(key=lambda item: item[0], reverse=True)
-    return [chunk for _, chunk in scored[:top_k] if chunk.strip()]
+    return [
+        {"text": chunk, "score": round(score, 3), "metadata": {"chunk_index": chunk_index}}
+        for score, chunk, chunk_index in scored[:top_k]
+        if chunk.strip() and score >= FALLBACK_MIN_RELEVANCE_SCORE
+    ]
 
 
-def _format_context(chunks: list[str]) -> str:
+def _format_context(chunks: list[dict]) -> str:
     lines = []
     for idx, chunk in enumerate(chunks, start=1):
-        lines.append(f"Chunk {idx}:\n{chunk.strip()}")
+        source = chunk.get("metadata", {})
+        label = source.get("name", "Document")
+        chunk_number = source.get("chunk_index", idx)
+        lines.append(f"Source: {label}, chunk {chunk_number}:\n{chunk['text'].strip()}")
     return "\n\n".join(lines)
 
 
@@ -145,7 +173,7 @@ def answer_document_question(
             "error": "document bundle not found",
         }
 
-    retrieved_chunks: list[str] = []
+    retrieved_chunks: list[dict] = []
     engine = bundle.get("engine", "fallback")
 
     try:
@@ -159,7 +187,13 @@ def answer_document_question(
                 except Exception:
                     text = getattr(node.node, "text", "") or str(node)
                 if text.strip():
-                    retrieved_chunks.append(text.strip())
+                    score = float(getattr(node, "score", 0.0) or 0.0)
+                    if score >= RAG_MIN_RELEVANCE_SCORE:
+                        retrieved_chunks.append({
+                            "text": text.strip(),
+                            "score": round(score, 3),
+                            "metadata": dict(getattr(node.node, "metadata", {}) or {}),
+                        })
         else:
             retrieved_chunks = _fallback_retrieve(question, bundle.get("chunks", []), top_k=4)
     except Exception:
@@ -168,7 +202,7 @@ def answer_document_question(
 
     if not retrieved_chunks:
         return {
-            "answer": "I could not find relevant text in the uploaded document.",
+            "answer": "I could not find relevant text in the uploaded document, so I cannot answer that from this file.",
             "sources": [],
             "engine": engine,
             "error": None,

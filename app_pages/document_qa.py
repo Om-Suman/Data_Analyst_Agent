@@ -20,6 +20,8 @@ def render():
         st.warning("The active dataset is not a text document. Upload a PDF, DOCX, TXT, or OCR image first.")
         return
 
+    st.info(f"Active document: **{active_name}**. Answers are limited to this document.")
+
     bundle = get_document_bundle(active_name)
     if bundle:
         st.caption(f"Index engine: {bundle.get('engine', 'unknown')}")
@@ -50,5 +52,8 @@ def render():
         if sources:
             with st.expander("Retrieved Context", expanded=False):
                 for idx, source in enumerate(sources, start=1):
-                    st.markdown(f"**Chunk {idx}**")
-                    st.write(source)
+                    metadata = source.get("metadata", {})
+                    name = metadata.get("name", active_name)
+                    chunk_number = metadata.get("chunk_index", idx)
+                    st.markdown(f"**{name} — chunk {chunk_number}** · relevance: {source.get('score', 'n/a')}")
+                    st.write(source.get("text", ""))

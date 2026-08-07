@@ -48,6 +48,9 @@ def render():
         st.warning("No dataset or text document loaded. Please upload data first.")
         return
 
+    input_kind = "document" if is_document else "dataset"
+    st.info(f"Active {input_kind}: **{name}**. Answers are limited to this uploaded file.")
+
     history = st.session_state.get("query_history", [])
 
     # API key check
@@ -171,9 +174,12 @@ def _display_result(result: dict):
         sources = tool_result.get("sources", [])
         if sources:
             with st.expander("Retrieved document context", expanded=False):
-                for index, source_text in enumerate(sources, start=1):
-                    st.markdown(f"**Chunk {index}**")
-                    st.write(source_text)
+                for index, source in enumerate(sources, start=1):
+                    metadata = source.get("metadata", {})
+                    name = metadata.get("name", "Document")
+                    chunk_number = metadata.get("chunk_index", index)
+                    st.markdown(f"**{name} — chunk {chunk_number}** · relevance: {source.get('score', 'n/a')}")
+                    st.write(source.get("text", ""))
 
     # Execute and display code blocks
     exec_results = result.get("execution_results", [])
