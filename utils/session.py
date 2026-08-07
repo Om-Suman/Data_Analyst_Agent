@@ -1,4 +1,6 @@
 """Session state management."""
+from copy import deepcopy
+
 import streamlit as st
 from datetime import datetime
 
@@ -21,7 +23,7 @@ DEFAULTS = {
 def init_session_state():
     for key, default in DEFAULTS.items():
         if key not in st.session_state:
-            st.session_state[key] = default
+            st.session_state[key] = deepcopy(default)
 
 def get_active_df():
     name = st.session_state.active_dataset
