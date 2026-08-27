@@ -3,7 +3,6 @@ AI Query Engine
 Translates natural language into Pandas code and executes it safely.
 """
 import pandas as pd
-import streamlit as st
 from modules.llm_client import query_llm, extract_python_code
 from modules.executor import execute_code, ExecutionResult
 

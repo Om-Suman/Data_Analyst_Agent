@@ -4,10 +4,19 @@ from __future__ import annotations
 
 from difflib import SequenceMatcher
 import re
-
-import streamlit as st
+from typing import Optional, Any
 
 from modules.llm_client import query_llm
+
+_GLOBAL_DOCUMENT_INDEXES: dict[str, dict] = {}
+
+
+def _get_active_store(store: Optional[dict] = None) -> dict:
+    """Retrieve active document index store."""
+    if store is not None:
+        return store
+    return _GLOBAL_DOCUMENT_INDEXES
+
 
 try:
     from llama_index.core import Document, Settings, VectorStoreIndex
@@ -33,7 +42,6 @@ except Exception:
 
 
 DOCUMENT_SYSTEM_PROMPT = """You answer questions strictly from the provided document context.
-
 Rules:
 - Use only the supplied context.
 - If the context does not contain the answer, say so clearly.
@@ -113,13 +121,15 @@ def build_document_bundle(text: str, metadata: dict | None = None) -> dict:
     return bundle
 
 
-def store_document_bundle(name: str, bundle: dict) -> dict:
-    st.session_state.document_indexes[name] = bundle
+def store_document_bundle(name: str, bundle: dict, store: Optional[dict] = None) -> dict:
+    target_store = _get_active_store(store)
+    target_store[name] = bundle
     return bundle
 
 
-def get_document_bundle(name: str) -> dict | None:
-    return st.session_state.get("document_indexes", {}).get(name)
+def get_document_bundle(name: str, store: Optional[dict] = None) -> dict | None:
+    target_store = _get_active_store(store)
+    return target_store.get(name)
 
 
 def _question_terms(question: str) -> set[str]:
@@ -163,8 +173,12 @@ def answer_document_question(
     question: str,
     document_name: str,
     max_tokens: int = 1024,
+    store: Optional[dict] = None,
+    api_key: Optional[str] = None,
+    primary_model: Optional[str] = None,
+    fallback_model: Optional[str] = None,
 ) -> dict:
-    bundle = get_document_bundle(document_name)
+    bundle = get_document_bundle(document_name, store=store)
     if not bundle:
         return {
             "answer": "No document index is available for the active dataset.",
@@ -223,6 +237,9 @@ CONTEXT:
         temperature=0.2,
         retries=1,
         timeout=60,
+        api_key=api_key,
+        primary_model=primary_model,
+        fallback_model=fallback_model,
     )
 
     if response.startswith("❌") or not response.strip():

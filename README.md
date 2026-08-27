@@ -1,218 +1,144 @@
-# Data Analyst Agent
+# Data Analyst Agent (Production React + FastAPI Edition)
 
-An AI-powered Streamlit application that combines deterministic analytics with LLM-powered reasoning. Users can upload datasets and documents, explore and clean data, generate visualizations, forecast trends, detect anomalies, execute AI-generated analysis safely, and perform Retrieval-Augmented Generation (RAG) over documents through a unified natural-language interface.
-
----
-
-## Features
-
-- Upload CSV, Excel, JSON, SQLite, PDF, DOCX, TXT, and image files.
-- Explore datasets with descriptive statistics, correlations, filtering, and visualizations.
-- Clean and preprocess datasets with version snapshot support.
-- Natural-language query interface powered by LangChain intent routing.
-- Secure execution of LLM-generated Pandas and Plotly code inside a restricted sandbox.
-- Deterministic statistical insights without unnecessary LLM execution.
-- Time-series forecasting.
-- Anomaly detection.
-- Retrieval-Augmented Generation (RAG) for uploaded documents using LlamaIndex.
-- Export analytical reports in HTML and Excel formats.
+An enterprise-grade AI data analysis platform combining deterministic analytics with LLM reasoning. Built with **FastAPI**, **React**, **Vite**, **TypeScript**, **Tailwind CSS**, and **Hugging Face Inference models**.
 
 ---
 
-## System Architecture
+## 🚀 Key Features
 
-### Overall Architecture
-
-<p align="center">
-  <img src="Diagrams/system_architecture1.png" width="950">
-</p>
-
-The application follows a layered architecture consisting of:
-
-- **Presentation Layer** – Streamlit UI, sidebar navigation, and feature pages.
-- **Application Layer** – Data ingestion, cleaning, visualization, forecasting, anomaly detection, and exploration modules.
-- **AI Layer** – LangChain intent router, Hugging Face LLM client, LlamaIndex RAG, safe code executor, insights, and reporting modules.
-- **State Layer** – Streamlit Session State for managing shared application state.
-- **External Services** – Hugging Face Inference API and Hugging Face Embedding models.
-
----
-
-## AI Query Workflow
-
-<p align="center">
-  <img src="Diagrams/ai_query_workflow.png" width="950">
-</p>
-
-User queries are first classified using a **LangChain Intent Router**, which directs requests to specialized workflows:
-
-- **DataFrame Analysis** → LLM generates Pandas/Plotly code executed securely in a sandbox.
-- **Statistical Summary** → Deterministic Pandas-based analysis.
-- **Forecasting** → Time-series forecasting module.
-- **Anomaly Detection** → Dedicated anomaly detection module.
-- **Document QA** → LlamaIndex Retrieval-Augmented Generation pipeline.
-
-Results from every workflow are unified and presented through the Streamlit interface.
+- **Multi-Format Ingestion**: Upload CSV, Excel (`.xlsx`, `.xls`), JSON, SQLite (`.db`, `.sqlite`), PDF, Word (`.docx`), plain text (`.txt`), and OCR images.
+- **Exploratory Data Analysis (EDA)**: Interactive paginated grid, descriptive statistics, correlation heatmaps (Pearson, Spearman, Kendall), distribution analyzers (Histogram, Box Plot, Violin), and deep column profilers.
+- **Automated Data Quality & Cleaning**:
+  - Quality scoring algorithm (0–100, Grade A–F) with issue diagnosis.
+  - Imputation (mean, median, mode, forward fill, backward fill, custom, drop).
+  - Outlier detection & filtering via Z-Score or IQR.
+  - Automatic dtype inference and column name normalization (snake_case).
+  - Version history with instant snapshot rollback.
+- **Natural Language AI Data Queries**:
+  - LangChain-based heuristic and LLM intent routing.
+  - Safe Python sandbox execution with AST syntax validation, restricted globals, and banned dangerous imports (`os`, `sys`, `subprocess`, `open`).
+  - Automatic single-pass code repair for recoverable errors.
+  - Dynamic Plotly visualization and DataFrame table generation.
+- **Document QA (RAG)**: Retrieval-Augmented Generation over unstructured documents using LlamaIndex with keyword similarity fallback.
+- **Interactive Visualizations Studio**: 14+ interactive chart types (Bar, Line, Scatter, Histogram, Box, Violin, Pie, Area, Heatmap, Treemap, Sunburst, Bubble, Funnel, KPI Dashboard).
+- **Automated Business Intelligence & Insights**: Rule-based statistical pattern detection and deep AI executive summaries, findings, trends, opportunities, risks, recommendations, and narrative data stories.
+- **Time Series Forecasting**: Moving Average, Linear Trend Regression (OLS), and Exponential Smoothing (Holt-Winters) with 95% confidence intervals and CSV export.
+- **Anomaly Detection**: Multivariate Isolation Forest, Gaussian Z-Score, and IQR anomaly scans with interactive PCA 2D scatter projections.
+- **Multi-Format Report Exports**:
+  - Standalone interactive dark-mode HTML executive reports.
+  - Multi-tab formatted Excel workbooks (`.xlsx`) with Data, Statistics, Missing Values, Column Info, and Query History sheets.
+  - Cleaned data CSV downloads.
 
 ---
 
-## Document RAG Workflow
-
-<p align="center">
-  <img src="Diagrams/document_rag_workflow.png" width="950">
-</p>
-
-The document question-answering pipeline consists of:
-
-1. Upload PDF, DOCX, TXT, or image files.
-2. Extract document text (OCR for images).
-3. Split text into overlapping chunks.
-4. Generate Hugging Face embeddings.
-5. Build and persist a LlamaIndex vector index.
-6. Retrieve the most relevant document chunks.
-7. Generate grounded answers using retrieved context.
-8. Fall back to keyword/string similarity retrieval if vector search is unavailable.
-
----
-
-## Secure Code Execution
-
-<p align="center">
-  <img src="Diagrams/safe_code_execution_diagram.png" width="950">
-</p>
-
-For DataFrame analysis requests, AI-generated code follows a secure execution pipeline:
-
-- LLM generates Pandas and Plotly code.
-- Python code is extracted and sanitized.
-- Dangerous imports, file I/O, shell commands, and unsafe operations are removed.
-- AST validation blocks unsafe code.
-- Code executes on a DataFrame copy inside a restricted namespace.
-- Only approved libraries (Pandas, NumPy, Plotly, Matplotlib, Seaborn) are available.
-- Execution failures trigger a single automatic repair attempt.
-- Tables, charts, runtime information, and errors are captured before displaying results.
-
----
-
-## Architecture Highlights
-
-- Layered architecture separating presentation, application, AI, state management, and external services.
-- LangChain-based intent routing for intelligent workflow selection.
-- Hybrid design combining deterministic analytics with LLM-powered reasoning.
-- Secure sandbox for executing AI-generated Pandas and Plotly code.
-- LlamaIndex-powered Retrieval-Augmented Generation for document question answering.
-- Shared application state managed through Streamlit Session State.
-
----
-
-## Tech Stack
-
-### Frontend
-
-- Streamlit
-
-### Data Processing
-
-- Python
-- Pandas
-- NumPy
-
-### Visualization
-
-- Plotly
-- Matplotlib
-- Seaborn
-
-### Machine Learning & Analytics
-
-- scikit-learn
-- SciPy
-- statsmodels
-
-### AI & LLM
-
-- Hugging Face Inference API
-- LangChain
-- LlamaIndex
-
-### Document Processing
-
-- PyMuPDF
-- python-docx
-- Pillow
-- pytesseract
-- chardet
-
----
-
-## Project Structure
+## 🏗️ Architecture
 
 ```text
-Data-Analyst-Agent/
+DataAnalystAgent/
+├── backend/                  # FastAPI REST API Backend
+│   ├── api/                  # Modular APIRouters
+│   │   ├── routes_config.py
+│   │   ├── routes_datasets.py
+│   │   ├── routes_cleaning.py
+│   │   ├── routes_explorer.py
+│   │   ├── routes_query.py
+│   │   ├── routes_document.py
+│   │   ├── routes_visualizations.py
+│   │   ├── routes_insights.py
+│   │   ├── routes_forecasting.py
+│   │   ├── routes_anomalies.py
+│   │   └── routes_reports.py
+│   ├── session/              # Thread-safe SessionState & SessionManager
+│   │   └── state.py
+│   ├── schemas/              # Pydantic Request & Response Schemas
+│   ├── services/             # Pure Business Logic & Serialization
+│   ├── tests/                # Comprehensive Pytest Suite
+│   └── main.py               # FastAPI App & Static File Serving
 │
-├── app.py
-├── app_pages/
-├── modules/
-├── utils/
-├── Diagrams/
-│   ├── system_architecture.png
-│   ├── ai_query_workflow.png
-│   ├── document_rag_workflow.png
-│   └── safe_code_execution_diagram.png
+├── frontend/                 # Modern React + Vite + TypeScript Frontend
+│   ├── src/
+│   │   ├── api/              # Axios API Client & Session Handler
+│   │   ├── components/       # PlotlyChart, DataTable, MetricCard, Navbar, Sidebar
+│   │   ├── context/          # DatasetContext & State Management
+│   │   ├── layouts/          # Responsive AppLayout Shell
+│   │   ├── pages/            # 12 Feature Pages (Dashboard, Upload, Cleaning, etc.)
+│   │   └── types/            # TypeScript Interface Definitions
+│   ├── index.html
+│   ├── tailwind.config.js
+│   └── vite.config.ts
+│
+├── modules/                  # Decoupled Core Analytics & AI Engines
+│   ├── ingestion.py
+│   ├── cleaning.py
+│   ├── executor.py
+│   ├── llm_client.py
+│   ├── insights.py
+│   ├── forecasting.py
+│   ├── anomaly_detection.py
+│   ├── document_rag.py
+│   ├── query_engine.py
+│   └── langchain_query.py
+│
 ├── requirements.txt
+├── .env
+├── .env.example
 └── README.md
 ```
 
 ---
 
-## Quick Start
+## ⚡ Quick Start
 
-Clone the repository:
+### 1. Prerequisites
+- Python 3.10+
+- Node.js 18+ and npm
 
+### 2. Backend Setup
 ```bash
-git clone <repository-url>
-cd Data-Analyst-Agent
-```
+# Activate virtual environment
+.\venv\Scripts\activate  # On Windows
+source venv/bin/activate # On Linux/macOS
 
-Install dependencies:
-
-```bash
+# Install Python dependencies
 pip install -r requirements.txt
+
+# Run backend test suite
+pytest backend/tests
+
+# Start FastAPI backend server (port 8000)
+uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
 ```
+Interactive Swagger API documentation is available at `http://127.0.0.1:8000/docs`.
 
-Run the application:
-
+### 3. Frontend Setup
 ```bash
-streamlit run app.py
+cd frontend
+
+# Install Node packages
+npm install
+
+# Start Vite development server (port 5173 with API proxy to 8000)
+npm run dev
 ```
+Open `http://localhost:5173` in your browser.
 
-Configure your Hugging Face API key using one of the following:
-
-- `.streamlit/secrets.toml`
-- Environment variable (`HF_API_KEY`)
-- Sidebar configuration
-
----
-
-## Security
-
-- AST-based validation before code execution.
-- Restricted execution namespace.
-- Dangerous imports and built-ins are blocked.
-- DataFrame copy is used during execution to prevent accidental data modification.
-- Automatic single-pass code repair for recoverable execution errors.
-- Secrets are loaded securely from Streamlit Secrets or environment variables.
-- Streamlit XSRF protection is enabled.
+### 4. Single-Port Production Build
+```bash
+cd frontend
+npm run build
+```
+Once built into `frontend/dist/`, running `uvicorn backend.main:app --port 8000` automatically serves both the backend API and the React single-page application from `http://localhost:8000`.
 
 ---
 
-## Deployment
+## 🔒 Security & Code Execution Sandbox
 
-The application can be deployed locally or on Streamlit Community Cloud.
-
-Configure the required `HF_API_KEY` in Streamlit Secrets or environment variables before deployment.
+- **AST Validation**: Code submitted for execution is parsed into an Abstract Syntax Tree (AST) to detect and block forbidden AST nodes (`Import`, `ImportFrom`, attribute access to private/dunder members, dangerous built-ins).
+- **Restricted Namespace**: Code runs inside a restricted global namespace allowing only safe packages (`pandas`, `numpy`, `plotly`, `math`, `datetime`, `re`, `json`, `scikit-learn`).
+- **DataFrame Immutability**: Code executions operate on deep copies of in-memory DataFrames to prevent accidental destructive state corruption.
+- **Key Masking**: Hugging Face API keys are stored in backend memory sessions and are never transmitted in cleartext over API responses.
 
 ---
 
-## License
-
-This project is licensed under the MIT License.
+## 📄 License
+MIT License.

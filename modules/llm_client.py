@@ -4,16 +4,59 @@ Primary: Qwen/Qwen3-32B
 Fallback: deepseek-ai/DeepSeek-R1
 """
 
-import streamlit as st
+import os
 import requests
 import time
 import json
 import re
+from typing import Optional
 
 HF_URL = "https://router.huggingface.co/v1/chat/completions"
 PRIMARY_MODEL = "deepseek-ai/DeepSeek-R1"
 FALLBACK_MODEL = ""
 FATAL_STATUS_CODES = {400, 401, 402, 403, 404}
+
+
+def _load_key_from_files() -> str:
+    """Scan local .env for HF_API_KEY."""
+    for candidate in [".env", "../.env"]:
+        if os.path.exists(candidate):
+            try:
+                with open(candidate, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line.startswith("HF_API_KEY") and "=" in line:
+                            val = line.split("=", 1)[1].strip().strip('"').strip("'")
+                            if val:
+                                return val
+            except Exception:
+                pass
+    return ""
+
+
+def _resolve_api_key(api_key: Optional[str] = None) -> str:
+    """Resolve API key from argument, environment, or disk configuration."""
+    if api_key and str(api_key).strip():
+        return str(api_key).strip()
+    env_key = os.environ.get("HF_API_KEY", "").strip()
+    if env_key:
+        return env_key
+    file_key = _load_key_from_files()
+    if file_key:
+        return file_key
+    return ""
+
+
+def _resolve_models(primary_model: Optional[str] = None, fallback_model: Optional[str] = None) -> list[str]:
+    """Return configured models in retry order."""
+    p = (primary_model or os.environ.get("PRIMARY_MODEL", "")).strip() or PRIMARY_MODEL
+    f = (fallback_model or os.environ.get("FALLBACK_MODEL", "")).strip()
+    models = []
+    for m in (p, f):
+        m = str(m or "").strip()
+        if m and m not in models:
+            models.append(m)
+    return models or [PRIMARY_MODEL]
 
 
 def clean_response(text: str) -> str:
@@ -50,15 +93,16 @@ def _call_hf(
     max_tokens: int,
     temperature: float,
     timeout: int,
+    api_key: Optional[str] = None,
 ) -> str:
 
-    api_key = st.session_state.get("hf_api_key", "")
+    resolved_key = _resolve_api_key(api_key)
 
-    if not api_key:
+    if not resolved_key:
         raise ValueError("No Hugging Face API key configured.")
 
     headers = {
-        "Authorization": f"Bearer {api_key}",
+        "Authorization": f"Bearer {resolved_key}",
         "Content-Type": "application/json",
     }
 
@@ -101,20 +145,6 @@ def _call_hf(
     raise ValueError(f"Unexpected response: {data}")
 
 
-def _get_model_chain() -> list[str]:
-    """Return configured models in retry order, skipping blanks and duplicates."""
-    primary = st.session_state.get("primary_model", PRIMARY_MODEL)
-    fallback = st.session_state.get("fallback_model", FALLBACK_MODEL)
-
-    models = []
-    for model in (primary, fallback):
-        model = str(model or "").strip()
-        if model and model not in models:
-            models.append(model)
-
-    return models or [PRIMARY_MODEL]
-
-
 def _friendly_http_error(status: int, body: str) -> str:
     if status == 402:
         return (
@@ -138,6 +168,9 @@ def query_llm(
     temperature: float = 0.3,
     retries: int = 3,
     timeout: int = 120,
+    api_key: Optional[str] = None,
+    primary_model: Optional[str] = None,
+    fallback_model: Optional[str] = None,
 ) -> tuple[str, str]:
     """
     Returns:
@@ -149,7 +182,7 @@ def query_llm(
         {"role": "user", "content": user_prompt},
     ]
 
-    models = _get_model_chain()
+    models = _resolve_models(primary_model, fallback_model)
     last_error = ""
 
     for model in models:
@@ -164,6 +197,7 @@ def query_llm(
                     max_tokens=max_tokens,
                     temperature=temperature,
                     timeout=timeout,
+                    api_key=api_key,
                 )
 
                 return text, model

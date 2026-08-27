@@ -4,7 +4,6 @@ Supports: CSV, Excel, JSON, SQLite, Text, PDF, Word, Images
 """
 import pandas as pd
 import numpy as np
-import streamlit as st
 import json
 import sqlite3
 import chardet
@@ -81,7 +80,7 @@ def compute_metadata(df: pd.DataFrame, source: str = "", file_size: int = 0) -> 
         "date_cols": date_cols,
         "missing_total": int(missing.sum()),
         "duplicate_rows": int(df.duplicated().sum()),
-        "memory_mb": round(df.memory_usage(deep=True).sum() / 1e6, 2),
+        "memory_mb": round(float(df.memory_usage(deep=True).sum() / 1e6), 2),
         "col_profiles": col_profiles,
         "loaded_at": datetime.now().isoformat(),
     }
