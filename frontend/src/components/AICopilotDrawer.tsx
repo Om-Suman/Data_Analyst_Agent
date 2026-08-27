@@ -18,6 +18,8 @@ import { QueryResponse } from '../types';
 import { PlotlyChart } from './PlotlyChart';
 import { DataTable } from './DataTable';
 import { useToast } from './Toast';
+import { MarkdownRenderer } from './MarkdownRenderer';
+
 
 interface AICopilotDrawerProps {
   isOpen: boolean;
@@ -140,9 +142,9 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({ isOpen, onClos
 
                 {/* Explanation text */}
                 {item.res.insights && (
-                  <p className="text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap">
-                    {item.res.insights}
-                  </p>
+                  <div className="text-slate-800 dark:text-slate-200">
+                    <MarkdownRenderer content={item.res.insights} showKpiCards={false} />
+                  </div>
                 )}
 
                 {/* Plotly Chart Spec if present */}

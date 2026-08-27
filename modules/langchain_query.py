@@ -176,7 +176,15 @@ def _run_deterministic_route(df: pd.DataFrame, route: dict, question: str) -> di
     intent = route["intent"]
     if intent == "statistical_summary":
         insights = generate_statistical_insights(df)
-        return {"insights": "\n".join(f"- {item}" for item in insights), "tool_result": None}
+        formatted_insights = (
+            "### 🎯 Executive Summary\n"
+            "Automated statistical profile and key data characteristics computed for the active dataset.\n\n"
+            "### 📊 Key Numerical Highlights\n" +
+            "\n".join(f"- {item}" for item in insights) + "\n\n"
+            "### 💡 Strategic Observations & Takeaways\n"
+            "- Check highlighted distribution traits, cardinality flags, and correlation signals for downstream modeling."
+        )
+        return {"insights": formatted_insights, "tool_result": None}
 
     if intent == "forecast":
         column = _select_numeric_column(df, route.get("column", ""))
@@ -184,12 +192,27 @@ def _run_deterministic_route(df: pd.DataFrame, route: dict, question: str) -> di
         method = str(route.get("method", "")).lower()
         if method == "moving_average":
             forecast = moving_average_forecast(df[column], horizon=horizon)
+            method_label = "Moving Average"
         elif method == "exponential_smoothing":
             forecast = exponential_smoothing_forecast(df[column], horizon=horizon)
+            method_label = "Exponential Smoothing (Holt-Winters)"
         else:
             forecast = linear_trend_forecast(df[column], horizon=horizon)
+            method_label = "Linear Trend Regression"
+
+        formatted_insights = (
+            "### 🎯 Executive Summary\n"
+            f"Forecast projection for **{column}** indicates expected trajectory across the next **{horizon} periods**.\n\n"
+            "### 📊 Key Numerical Highlights\n"
+            f"- **Interpretation**: {forecast.interpretation}\n"
+            f"- **Target Metric**: **{column}**\n"
+            f"- **Forecast Horizon**: **{horizon} periods**\n"
+            f"- **Forecasting Methodology**: **{method_label}**\n\n"
+            "### 💡 Strategic Observations & Takeaways\n"
+            "- Review confidence intervals (lower and upper bounds) rendered in the interactive chart below to plan for demand variance."
+        )
         return {
-            "insights": forecast.interpretation,
+            "insights": formatted_insights,
             "tool_result": {"type": "forecast", "column": column, "forecast": forecast},
         }
 
@@ -201,15 +224,25 @@ def _run_deterministic_route(df: pd.DataFrame, route: dict, question: str) -> di
             anomaly = detect_iqr(df)
         else:
             anomaly = detect_isolation_forest(df)
+
+        pct_anom = (anomaly.n_anomalies / len(df) * 100) if len(df) > 0 else 0.0
+        formatted_insights = (
+            "### 🎯 Executive Summary\n"
+            f"Anomaly detection scan identified **{anomaly.n_anomalies:,} anomalous records** ({pct_anom:.2f}% of total data) using **{anomaly.method}**.\n\n"
+            "### 📊 Key Numerical Highlights\n"
+            f"- **Detection Algorithm**: **{anomaly.method}**\n"
+            f"- **Outliers Flagged**: **{anomaly.n_anomalies:,} records**\n"
+            f"- **Features Evaluated**: **{', '.join(anomaly.columns_used)}**\n\n"
+            "### 💡 Strategic Observations & Takeaways\n"
+            "- Inspect flagged outlier records in the interactive anomaly scatter chart and generated anomalous data table below."
+        )
         return {
-            "insights": (
-                f"{anomaly.method} found **{anomaly.n_anomalies:,} anomalous rows** "
-                f"using: {', '.join(anomaly.columns_used)}."
-            ),
+            "insights": formatted_insights,
             "tool_result": {"type": "anomaly", "anomaly": anomaly},
         }
 
     raise ValueError(f"Unsupported deterministic route: {intent}")
+
 
 
 def _build_codegen_chain():

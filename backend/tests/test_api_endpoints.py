@@ -346,3 +346,21 @@ def test_dashboard_pins_endpoint(client):
     # Delete pin
     del_res = client.delete(f"/api/datasets/dashboard/pins/{pin_item['id']}")
     assert del_res.status_code == 200
+
+
+def test_ai_query_enhanced_insights(client):
+    client.post("/api/datasets/sample", json={"sample_name": "Sales Data"})
+
+    # Execute AI Query
+    res = client.post(
+        "/api/query",
+        json={"question": "What are the top 5 highest sales regions?"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["route"] in ["dataframe_analysis", "statistical_summary"]
+    assert "insights" in data
+    assert "Executive Summary" in data["insights"]
+    assert "Numerical Highlights" in data["insights"]
+    assert len(data["code_blocks"]) >= 0
+

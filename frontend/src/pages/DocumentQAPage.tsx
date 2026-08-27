@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { FileText, Send, BookOpen, Layers, AlertCircle, Bot } from 'lucide-react';
+import { FileText, Send, BookOpen, Layers, AlertCircle, Bot, Copy, Check } from 'lucide-react';
 import { useDataset } from '../context/DatasetContext';
 import { documentApi } from '../api/client';
 import { DocumentQAResponse } from '../types';
+import { MarkdownRenderer } from '../components/MarkdownRenderer';
+
 
 export const DocumentQAPage: React.FC = () => {
   const { activeDataset, hasDataset } = useDataset();
@@ -103,7 +105,9 @@ export const DocumentQAPage: React.FC = () => {
               </span>
             </div>
 
-            <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">{result.answer}</div>
+            <div className="pt-1">
+              <MarkdownRenderer content={result.answer} showKpiCards={false} />
+            </div>
           </div>
 
           {/* Retrieved Sources */}

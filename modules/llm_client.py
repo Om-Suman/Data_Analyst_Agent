@@ -173,7 +173,7 @@ def query_llm(
     max_tokens: int = 2048,
     temperature: float = 0.3,
     retries: int = 3,
-    timeout: int = 120,
+    timeout: int = 20,
     api_key: Optional[str] = None,
     primary_model: Optional[str] = None,
     fallback_model: Optional[str] = None,
