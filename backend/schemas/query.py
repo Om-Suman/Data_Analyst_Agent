@@ -45,3 +45,18 @@ class QueryHistoryItem(BaseModel):
 
 class QueryHistoryResponse(BaseModel):
     history: list[QueryHistoryItem]
+
+
+class SQLQueryRequest(BaseModel):
+    query: str
+    limit: Optional[int] = 500
+
+
+class SQLQueryResponse(BaseModel):
+    query: str
+    success: bool
+    columns: list[str] = []
+    rows: list[dict[str, Any]] = []
+    total_rows: int = 0
+    execution_time: float = 0.0
+    error: Optional[str] = None

@@ -34,6 +34,7 @@ class SessionState:
         self.cached_forecast: Optional[Any] = None
         self.cached_anomaly: Optional[Any] = None
         self.viz_history: list[dict[str, Any]] = []
+        self.pinned_charts: list[dict[str, Any]] = []
 
         # Configuration defaults
         self.config: dict[str, Any] = {
@@ -152,6 +153,15 @@ class SessionState:
             record["version"] += 1
             self._snapshot_version(name, description)
 
+    def update_dataset(self, name: str, df: pd.DataFrame, description: str = ""):
+        with self._lock:
+            self.touch()
+            if name in self.datasets:
+                self.datasets[name]["df"] = df
+                self.datasets[name]["rows"] = int(len(df))
+                self.datasets[name]["cols"] = int(len(df.columns))
+                self.save_version(name, description)
+
     def rollback_version(self, name: str, version_number: int) -> bool:
         with self._lock:
             self.touch()
@@ -198,6 +208,33 @@ class SessionState:
             self.query_history.append(entry)
             return entry
 
+    def add_pinned_chart(self, title: str, chart_type: str, figure_spec: dict[str, Any], source_page: str = "Visualizations", notes: str = "") -> dict[str, Any]:
+        with self._lock:
+            self.touch()
+            item = {
+                "id": str(uuid.uuid4())[:8],
+                "title": title,
+                "chart_type": chart_type,
+                "figure_spec": figure_spec,
+                "pinned_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "source_page": source_page,
+                "notes": notes,
+            }
+            self.pinned_charts.insert(0, item)
+            return item
+
+    def remove_pinned_chart(self, pin_id: str) -> bool:
+        with self._lock:
+            self.touch()
+            initial_len = len(self.pinned_charts)
+            self.pinned_charts = [p for p in self.pinned_charts if p["id"] != pin_id]
+            return len(self.pinned_charts) < initial_len
+
+    def get_pinned_charts(self) -> list[dict[str, Any]]:
+        with self._lock:
+            self.touch()
+            return list(self.pinned_charts)
+
     def clear_query_history(self):
         with self._lock:
             self.touch()
@@ -215,6 +252,7 @@ class SessionState:
             self.cached_forecast = None
             self.cached_anomaly = None
             self.viz_history.clear()
+            self.pinned_charts.clear()
             self.touch()
 
 

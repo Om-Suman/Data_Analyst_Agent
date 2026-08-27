@@ -158,26 +158,37 @@ export const AIQueryPage: React.FC = () => {
                 <span className="text-xs font-bold text-white uppercase tracking-wider">Analysis Result</span>
               </div>
               <div className="flex items-center gap-2 text-xs font-mono">
-                <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                <span className="px-2.5 py-1 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
                   Route: {currentResponse.route}
                 </span>
                 {currentResponse.model_used && (
-                  <span className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">
-                    Model: {currentResponse.model_used}
+                  <span className={`px-2.5 py-1 rounded font-medium border ${
+                    currentResponse.model_used === 'offline_analytic_engine'
+                      ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                      : 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                  }`}>
+                    {currentResponse.model_used === 'offline_analytic_engine' ? '⚡ Offline Analytics Engine' : `Model: ${currentResponse.model_used}`}
                   </span>
                 )}
               </div>
             </div>
 
             {/* Answer text */}
-            <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
-              {currentResponse.insights || 'Analysis completed successfully.'}
+            <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap font-sans">
+              {currentResponse.insights || (currentResponse.execution_results?.[0]?.stdout ? (
+                `Execution Output:\n${currentResponse.execution_results[0].stdout}`
+              ) : 'Analysis completed successfully.')}
             </div>
 
             {/* Render any generated Plotly figures from tool result or execution */}
             {currentResponse.tool_result?.figure_spec && (
               <div className="pt-3">
-                <PlotlyChart spec={currentResponse.tool_result.figure_spec} height={400} />
+                <PlotlyChart
+                  spec={currentResponse.tool_result.figure_spec}
+                  height={420}
+                  title={currentResponse.question}
+                  sourcePage="AI Query"
+                />
               </div>
             )}
 
@@ -185,7 +196,13 @@ export const AIQueryPage: React.FC = () => {
             {currentResponse.execution_results?.map((res, i) => (
               <div key={i} className="space-y-4 pt-2">
                 {res.figures?.map((fig, figIdx) => (
-                  <PlotlyChart key={figIdx} spec={fig} height={400} />
+                  <PlotlyChart
+                    key={figIdx}
+                    spec={fig}
+                    height={420}
+                    title={currentResponse.question}
+                    sourcePage="AI Query"
+                  />
                 ))}
 
                 {Object.entries(res.dataframes || {}).map(([name, rows]) => (

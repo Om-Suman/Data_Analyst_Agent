@@ -201,21 +201,182 @@ ACTUAL EXECUTION RESULTS:
 Write final insights that are strictly supported by the actual execution results."""
 
 
-def build_fallback_insights(exec_results: list[ExecutionResult]) -> str:
-    """Create deterministic insights when the final LLM call is unavailable."""
+import re
+
+def generate_smart_fallback_code(df: pd.DataFrame, question: str) -> str:
+    """
+    Intelligently generates working Pandas and Plotly code to answer the user's
+    question based on dataset schema heuristics when the remote LLM API is unavailable.
+    """
+    q = question.lower()
+    num_cols = df.select_dtypes(include="number").columns.tolist()
+    cat_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
+    date_cols = df.select_dtypes(include=["datetime64"]).columns.tolist()
+
+    # 1. Correlation heatmap / relationship
+    if any(w in q for w in ["corr", "relation", "heatmap", "association"]):
+        return (
+            "import plotly.express as px\n"
+            "numeric_df = df.select_dtypes(include='number')\n"
+            "corr_matrix = numeric_df.corr().round(2)\n"
+            "print('=== Correlation Matrix ===')\n"
+            "print(corr_matrix.to_string())\n\n"
+            "fig = px.imshow(\n"
+            "    corr_matrix,\n"
+            "    text_auto=True,\n"
+            "    color_continuous_scale='RdBu_r',\n"
+            "    title='Interactive Correlation Heatmap',\n"
+            "    aspect='auto'\n"
+            ")\n"
+        )
+
+    # 2. Top N / Ranking
+    match_top = re.search(r'\b(top|highest|lowest|bottom|best|worst|first|last)\s+(\d+)?', q)
+    if match_top or any(w in q for w in ["top", "highest", "lowest", "rank", "maximum", "minimum", "most"]):
+        n = 5
+        if match_top and match_top.group(2):
+            try:
+                n = int(match_top.group(2))
+            except Exception:
+                n = 5
+        is_ascending = any(w in q for w in ["lowest", "bottom", "worst", "min"])
+
+        target_num = None
+        for col in num_cols:
+            if col.lower() in q:
+                target_num = col
+                break
+        if not target_num:
+            target_num = num_cols[0] if num_cols else df.columns[0]
+
+        group_col = None
+        for col in cat_cols + date_cols:
+            if col.lower() in q:
+                group_col = col
+                break
+        if not group_col:
+            group_col = cat_cols[0] if cat_cols else (date_cols[0] if date_cols else df.columns[0])
+
+        order_label = "Lowest" if is_ascending else "Highest"
+        return (
+            f"import plotly.express as px\n"
+            f"metric_col = '{target_num}'\n"
+            f"cat_col = '{group_col}'\n\n"
+            f"if metric_col != cat_col:\n"
+            f"    grouped = df.groupby(cat_col)[metric_col].sum().reset_index()\n"
+            f"else:\n"
+            f"    grouped = df[[cat_col, metric_col]].copy()\n\n"
+            f"sorted_df = grouped.sort_values(by=metric_col, ascending={is_ascending}).head({n})\n"
+            f"print('=== Top {n} {order_label} Records by ' + metric_col + ' ===')\n"
+            f"print(sorted_df.to_string(index=False))\n\n"
+            f"fig = px.bar(\n"
+            f"    sorted_df,\n"
+            f"    x=cat_col,\n"
+            f"    y=metric_col,\n"
+            f"    title=f'Top {n} {order_label} by {{metric_col.title()}}',\n"
+            f"    color=metric_col,\n"
+            f"    color_continuous_scale='Blues',\n"
+            f"    text_auto='.2s'\n"
+            f")\n"
+        )
+
+    # 3. Aggregation / Mean / Median / Summary by category
+    if any(w in q for w in ["average", "mean", "median", "sum", "total", "by category", "by department", "by region", "group by"]):
+        target_num = None
+        for col in num_cols:
+            if col.lower() in q:
+                target_num = col
+                break
+        if not target_num:
+            target_num = num_cols[0] if num_cols else df.columns[0]
+
+        group_col = None
+        for col in cat_cols:
+            if col.lower() in q:
+                group_col = col
+                break
+        if not group_col:
+            group_col = cat_cols[0] if cat_cols else df.columns[0]
+
+        return (
+            f"import plotly.express as px\n"
+            f"group_col = '{group_col}'\n"
+            f"val_col = '{target_num}'\n\n"
+            f"agg_stats = df.groupby(group_col)[val_col].agg(['count', 'mean', 'median', 'min', 'max', 'sum']).round(2).reset_index()\n"
+            f"print('=== Aggregated Statistics by ' + group_col + ' ===')\n"
+            f"print(agg_stats.to_string(index=False))\n\n"
+            f"fig = px.bar(\n"
+            f"    agg_stats,\n"
+            f"    x=group_col,\n"
+            f"    y='mean',\n"
+            f"    title=f'Average {{val_col.title()}} by {{group_col.title()}}',\n"
+            f"    color='mean',\n"
+            f"    color_continuous_scale='Viridis',\n"
+            f"    text_auto='.2s'\n"
+            f")\n"
+        )
+
+    # 4. Time series trend
+    if date_cols and any(w in q for w in ["trend", "time", "date", "daily", "monthly", "year", "timeline", "over time", "history"]):
+        date_c = date_cols[0]
+        val_c = num_cols[0] if num_cols else df.columns[0]
+        return (
+            f"import plotly.express as px\n"
+            f"time_df = df.groupby('{date_c}')['{val_c}'].sum().reset_index().sort_values(by='{date_c}')\n"
+            f"print('=== Time-Series Summary for {val_c} ===')\n"
+            f"print(time_df.head(10).to_string(index=False))\n\n"
+            f"fig = px.line(\n"
+            f"    time_df,\n"
+            f"    x='{date_c}',\n"
+            f"    y='{val_c}',\n"
+            f"    title='{val_c.title()} Trend Over Time',\n"
+            f"    markers=True\n"
+            f")\n"
+        )
+
+    # 5. Default General Overview / Distribution
+    val_c = num_cols[0] if num_cols else df.columns[0]
+    return (
+        f"import plotly.express as px\n"
+        f"print('=== Dataset Summary ===')\n"
+        f"print(df.describe(include='all').round(2).to_string())\n\n"
+        f"if '{val_c}' in df.select_dtypes(include='number').columns:\n"
+        f"    fig = px.histogram(\n"
+        f"        df,\n"
+        f"        x='{val_c}',\n"
+        f"        marginal='box',\n"
+        f"        title='Distribution of {val_c.title()}',\n"
+        f"        nbins=30\n"
+        f"    )\n"
+    )
+
+
+def build_fallback_insights(exec_results: list[ExecutionResult], question: str = "") -> str:
+    """Create rich structured insights when the final LLM call is unavailable."""
     outputs = []
     errors = []
+    figures_count = 0
     for exec_result in exec_results:
         if exec_result.stdout.strip():
             outputs.append(exec_result.stdout.strip())
         if exec_result.error:
             errors.append(exec_result.error.strip().splitlines()[-1])
+        figures_count += len(getattr(exec_result, "figures", []))
 
     if errors:
-        return "## Insights\nThe analysis code did not complete successfully, so no business conclusion should be drawn from this run."
+        return "## ⚠️ Execution Note\nThe analysis code encountered an error: " + "; ".join(errors)
+
+    insights = ["## 📊 Key Analysis Findings"]
     if outputs:
-        return "## Insights\n" + "\n\n".join(outputs)
-    return "## Insights\nThe code executed successfully, but it did not print enough information to generate a grounded narrative."
+        for out in outputs:
+            insights.append(f"```text\n{out}\n```")
+    else:
+        insights.append("Computation completed successfully.")
+
+    if figures_count > 0:
+        insights.append(f"\n*Interactive visual chart ({figures_count}) generated and rendered below.*")
+
+    return "\n\n".join(insights)
 
 
 def generate_final_insights(
@@ -233,11 +394,11 @@ def generate_final_insights(
         max_tokens=min(max_tokens, 1200),
         temperature=0.2,
         retries=1,
-        timeout=60,
+        timeout=15,
     )
 
-    if response.startswith("âŒ") or response.startswith("❌") or not response.strip():
-        return build_fallback_insights(exec_results), "fallback"
+    if response.startswith("❌") or not response.strip() or "LLM error" in response:
+        return build_fallback_insights(exec_results, question), "offline_analytic_engine"
 
     return response.strip(), model_used
 
@@ -276,14 +437,15 @@ def run_query(
     result["llm_response"] = ""
     result["model_used"] = model_used
 
-    if response.startswith("❌"):
-        result["error"] = response
-        return result
-
-    # Extract code blocks
     code_blocks = extract_python_code(response)
-    result["code_blocks"] = code_blocks
 
+    if response.startswith("❌") or not code_blocks:
+        fallback_code = generate_smart_fallback_code(df, question)
+        code_blocks = [fallback_code]
+        result["model_used"] = "offline_analytic_engine"
+        result["code_generation_response"] = f"```python\n{fallback_code}\n```"
+
+    result["code_blocks"] = code_blocks
     result["insights"] = ""
 
    

@@ -7,7 +7,7 @@ import re
 import pandas as pd
 
 from modules.executor import execute_code
-from modules.llm_client import extract_json, extract_python_code, query_llm
+from modules.llm_client import extract_json, extract_python_code, query_llm, _DEPLETED_KEYS, _resolve_api_key
 from modules.anomaly_detection import detect_iqr, detect_isolation_forest, detect_zscore
 from modules.document_rag import answer_document_question
 from modules.forecasting import (
@@ -22,6 +22,7 @@ from modules.query_engine import (
     build_context,
     build_repair_prompt,
     generate_final_insights,
+    generate_smart_fallback_code,
 )
 
 try:
@@ -106,6 +107,8 @@ def _build_router_chain():
             user_prompt=messages[1].content,
             max_tokens=300,
             temperature=0.0,
+            retries=1,
+            timeout=15,
         )
         return {"response": response, "model": model}
 
@@ -127,7 +130,8 @@ def route_question(
 Input type: {schema}
 Available columns: {available_columns}"""
 
-    if not LANGCHAIN_AVAILABLE:
+    resolved_key = _resolve_api_key()
+    if not LANGCHAIN_AVAILABLE or not resolved_key or resolved_key in _DEPLETED_KEYS:
         return {**fallback, "routing_source": "heuristic", "routing_model": "none"}
 
     try:
@@ -228,6 +232,8 @@ def _build_codegen_chain():
             user_prompt=user_prompt,
             max_tokens=2048,
             temperature=0.3,
+            retries=1,
+            timeout=30,
         )
         return {"response": response, "model": model}
 
@@ -235,6 +241,10 @@ def _build_codegen_chain():
 
 
 def _generate_code(df: pd.DataFrame, question: str, history: list | None, max_tokens: int):
+    resolved_key = _resolve_api_key()
+    if not resolved_key or resolved_key in _DEPLETED_KEYS:
+        return ("❌ Credits depleted or no API key", "none", False)
+
     prompt_text = build_context(df, question, history)
 
     if not LANGCHAIN_AVAILABLE:
@@ -243,6 +253,8 @@ def _generate_code(df: pd.DataFrame, question: str, history: list | None, max_to
             user_prompt=prompt_text,
             max_tokens=max_tokens,
             temperature=0.3,
+            retries=1,
+            timeout=30,
         )
         return response, model_used, False
 
@@ -295,11 +307,14 @@ def run_query_langchain(
     result["llm_response"] = ""
     result["model_used"] = model_used
 
-    if response.startswith("❌"):
-        result["error"] = response
-        return result
-
     code_blocks = extract_python_code(response)
+
+    if response.startswith("❌") or not code_blocks:
+        fallback_code = generate_smart_fallback_code(df, question)
+        code_blocks = [fallback_code]
+        result["model_used"] = "offline_analytic_engine"
+        result["code_generation_response"] = f"```python\n{fallback_code}\n```"
+
     result["code_blocks"] = code_blocks
 
     exec_results = []
@@ -310,7 +325,7 @@ def run_query_langchain(
         exec_result = execute_code(code, df)
         final_code = code
 
-        if exec_result.error:
+        if exec_result.error and not response.startswith("❌"):
             repair_prompt = build_repair_prompt(
                 df=df,
                 question=question,
@@ -356,9 +371,9 @@ def run_query_langchain(
 
     result["insights"] = final_insights
     result["llm_response"] = final_insights
-    if result["model_used"]:
+    if result["model_used"] and result["model_used"] != "offline_analytic_engine":
         result["model_used"] = f"{result['model_used']} + insights:{insights_model}"
-    else:
+    elif not result["model_used"]:
         result["model_used"] = f"insights:{insights_model}"
 
     return result

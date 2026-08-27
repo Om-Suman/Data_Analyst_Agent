@@ -248,3 +248,59 @@ export interface ProfileResponse {
     missing_pct: number;
   }[];
 }
+
+export interface SQLQueryRequest {
+  query: string;
+  limit?: number;
+}
+
+export interface SQLQueryResponse {
+  query: string;
+  success: boolean;
+  columns: string[];
+  rows: Record<string, any>[];
+  total_rows: number;
+  execution_time: number;
+  error?: string | null;
+}
+
+export interface ColumnTransformRequest {
+  column: string;
+  operation: 'cast' | 'math_expr' | 'rename' | 'string_case' | 'create_column' | 'drop';
+  target_type?: string;
+  new_name?: string;
+  expression?: string;
+  case_mode?: string;
+}
+
+export interface ColumnTransformResponse {
+  success: boolean;
+  operation: string;
+  message: string;
+  rows: number;
+  cols: number;
+  columns: string[];
+  sample_preview: Record<string, any>[];
+}
+
+export interface PinChartRequest {
+  title: string;
+  chart_type: string;
+  figure_spec: any;
+  source_page?: string;
+  notes?: string;
+}
+
+export interface PinnedChartItem {
+  id: string;
+  title: string;
+  chart_type: string;
+  figure_spec: any;
+  pinned_at: string;
+  source_page: string;
+  notes: string;
+}
+
+export interface PinnedDashboardResponse {
+  pinned_charts: PinnedChartItem[];
+}

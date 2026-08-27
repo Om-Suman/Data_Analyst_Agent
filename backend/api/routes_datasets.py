@@ -11,6 +11,9 @@ from backend.schemas.dataset import (
     DatasetItem,
     DatasetListResponse,
     DatasetPreviewResponse,
+    PinChartRequest,
+    PinnedChartItem,
+    PinnedDashboardResponse,
     SampleDatasetRequest,
     SetActiveRequest,
 )
@@ -163,3 +166,37 @@ def download_excel(session: SessionState = Depends(get_current_session)):
 def pd_excel_writer(buffer):
     import pandas as pd
     return pd.ExcelWriter(buffer, engine="openpyxl")
+
+
+@router.get("/dashboard/pins", response_model=PinnedDashboardResponse)
+def list_pinned_charts(session: SessionState = Depends(get_current_session)):
+    return PinnedDashboardResponse(pinned_charts=session.get_pinned_charts())
+
+
+@router.post("/dashboard/pins", response_model=PinnedChartItem)
+def pin_chart(
+    req: PinChartRequest,
+    session: SessionState = Depends(get_current_session),
+):
+    try:
+        item = session.add_pinned_chart(
+            title=req.title,
+            chart_type=req.chart_type,
+            figure_spec=req.figure_spec,
+            source_page=req.source_page or "Visualizations",
+            notes=req.notes or "",
+        )
+        return item
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+
+@router.delete("/dashboard/pins/{pin_id}")
+def unpin_chart(
+    pin_id: str,
+    session: SessionState = Depends(get_current_session),
+):
+    success = session.remove_pinned_chart(pin_id)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pinned chart not found.")
+    return {"status": "ok", "message": f"Pinned chart '{pin_id}' removed."}

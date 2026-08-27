@@ -6,6 +6,8 @@ from backend.session.state import SessionState
 from backend.schemas.cleaning import (
     CleaningConfigRequest,
     CleaningReportResponse,
+    ColumnTransformRequest,
+    ColumnTransformResponse,
     QualityScoreResponse,
     RollbackRequest,
     VersionHistoryResponse,
@@ -16,6 +18,7 @@ from backend.services.cleaning_service import (
     get_dataset_quality_overview,
     get_version_history,
     rollback_dataset_version,
+    transform_column,
 )
 
 router = APIRouter(prefix="/cleaning", tags=["Data Cleaning"])
@@ -53,6 +56,18 @@ def run_and_apply_cleaning(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
 
+@router.post("/transform-column", response_model=ColumnTransformResponse)
+def apply_column_transformation(
+    req: ColumnTransformRequest,
+    session: SessionState = Depends(get_current_session),
+):
+    try:
+        res = transform_column(session, req.model_dump())
+        return res
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+
 @router.get("/versions", response_model=VersionHistoryResponse)
 def list_versions(session: SessionState = Depends(get_current_session)):
     try:
@@ -68,6 +83,6 @@ def rollback_version(
 ):
     try:
         rollback_dataset_version(session, req.version)
-        return {"status": "ok", "message": f"Rolled back to version {req.version}."}
+        return {"status": "ok", "message": f"Successfully rolled back to version {req.version}"}
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))

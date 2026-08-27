@@ -59,5 +59,24 @@ class VersionHistoryResponse(BaseModel):
     versions: list[VersionItem]
 
 
+class ColumnTransformRequest(BaseModel):
+    column: str
+    operation: str = Field(..., description="cast|math_expr|rename|string_case|create_column|drop")
+    target_type: Optional[str] = None
+    new_name: Optional[str] = None
+    expression: Optional[str] = None
+    case_mode: Optional[str] = None
+
+
+class ColumnTransformResponse(BaseModel):
+    success: bool
+    operation: str
+    message: str
+    rows: int
+    cols: int
+    columns: list[str]
+    sample_preview: list[dict[str, Any]]
+
+
 class RollbackRequest(BaseModel):
     version: int

@@ -17,6 +17,13 @@ import {
   QueryResponse,
   VersionHistoryResponse,
   VisualizationResponse,
+  SQLQueryRequest,
+  SQLQueryResponse,
+  ColumnTransformRequest,
+  ColumnTransformResponse,
+  PinChartRequest,
+  PinnedChartItem,
+  PinnedDashboardResponse,
 } from '../types';
 
 // Generate or retrieve persistent browser session ID
@@ -87,6 +94,18 @@ export const datasetApi = {
   },
   getDownloadCsvUrl: () => `/api/datasets/download/csv`,
   getDownloadExcelUrl: () => `/api/datasets/download/excel`,
+  getPinnedCharts: async (): Promise<PinnedDashboardResponse> => {
+    const res = await api.get<PinnedDashboardResponse>('/datasets/dashboard/pins');
+    return res.data;
+  },
+  pinChart: async (req: PinChartRequest): Promise<PinnedChartItem> => {
+    const res = await api.post<PinnedChartItem>('/datasets/dashboard/pins', req);
+    return res.data;
+  },
+  unpinChart: async (pinId: string) => {
+    const res = await api.delete(`/datasets/dashboard/pins/${encodeURIComponent(pinId)}`);
+    return res.data;
+  },
 };
 
 // Data Cleaning API
@@ -101,6 +120,10 @@ export const cleaningApi = {
   },
   applyCleaning: async (config: any): Promise<CleaningReportResponse> => {
     const res = await api.post<CleaningReportResponse>('/cleaning/apply', config);
+    return res.data;
+  },
+  transformColumn: async (req: ColumnTransformRequest): Promise<ColumnTransformResponse> => {
+    const res = await api.post<ColumnTransformResponse>('/cleaning/transform-column', req);
     return res.data;
   },
   getVersions: async (): Promise<VersionHistoryResponse> => {
@@ -146,7 +169,7 @@ export const explorerApi = {
   },
 };
 
-// Natural Language AI Query API
+// Natural Language AI Query & SQL Studio API
 export const queryApi = {
   ask: async (question: string, maxTokens?: number, datasetName?: string): Promise<QueryResponse> => {
     const res = await api.post<QueryResponse>('/query', {
@@ -154,6 +177,10 @@ export const queryApi = {
       max_tokens: maxTokens,
       dataset_name: datasetName,
     });
+    return res.data;
+  },
+  runSQL: async (req: SQLQueryRequest): Promise<SQLQueryResponse> => {
+    const res = await api.post<SQLQueryResponse>('/query/sql', req);
     return res.data;
   },
   getHistory: async (): Promise<QueryHistoryResponse> => {

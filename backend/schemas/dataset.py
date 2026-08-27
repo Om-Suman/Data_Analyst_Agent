@@ -39,3 +39,25 @@ class SampleDatasetRequest(BaseModel):
 
 class SetActiveRequest(BaseModel):
     name: str
+
+
+class PinChartRequest(BaseModel):
+    title: str
+    chart_type: str
+    figure_spec: dict[str, Any]
+    source_page: Optional[str] = "Visualizations"
+    notes: Optional[str] = ""
+
+
+class PinnedChartItem(BaseModel):
+    id: str
+    title: str
+    chart_type: str
+    figure_spec: dict[str, Any]
+    pinned_at: str
+    source_page: str
+    notes: str = ""
+
+
+class PinnedDashboardResponse(BaseModel):
+    pinned_charts: list[PinnedChartItem]

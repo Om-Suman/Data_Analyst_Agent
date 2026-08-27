@@ -7,9 +7,12 @@ from backend.schemas.query import (
     QueryHistoryResponse,
     QueryRequest,
     QueryResponse,
+    SQLQueryRequest,
+    SQLQueryResponse,
 )
 from backend.services.query_service import (
     execute_ai_query,
+    execute_sql_query,
     export_query_history_csv,
     get_query_history,
 )
@@ -29,6 +32,18 @@ def ask_ai_query(
             max_tokens=req.max_tokens,
             dataset_name=req.dataset_name,
         )
+        return res
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+
+@router.post("/sql", response_model=SQLQueryResponse)
+def run_sql(
+    req: SQLQueryRequest,
+    session: SessionState = Depends(get_current_session),
+):
+    try:
+        res = execute_sql_query(session=session, query=req.query, limit=req.limit or 500)
         return res
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))

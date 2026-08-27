@@ -189,3 +189,92 @@ def export_query_history_csv(session: SessionState) -> bytes:
             for e in session.query_history
         ])
     return df.to_csv(index=False).encode("utf-8")
+
+
+def execute_sql_query(session: SessionState, query: str, limit: int = 500) -> dict[str, Any]:
+    import sqlite3
+    import time
+    import re
+
+    df = session.get_active_df()
+    if df is None or df.empty:
+        return {
+            "query": query,
+            "success": False,
+            "columns": [],
+            "rows": [],
+            "total_rows": 0,
+            "execution_time": 0.0,
+            "error": "No active dataset loaded in session. Please load a dataset first.",
+        }
+
+    q_clean = query.strip()
+    if not q_clean:
+        return {
+            "query": query,
+            "success": False,
+            "columns": [],
+            "rows": [],
+            "total_rows": 0,
+            "execution_time": 0.0,
+            "error": "SQL query cannot be empty.",
+        }
+
+    # Restrict to safe SELECT operations only
+    forbidden_tokens = ["DROP", "DELETE", "UPDATE", "INSERT", "ALTER", "CREATE", "TRUNCATE", "REPLACE", "ATTACH", "DETACH", "PRAGMA", "EXEC"]
+    normalized_q = re.sub(r"--.*", "", q_clean)
+    normalized_q = re.sub(r"/\*.*?\*/", "", normalized_q, flags=re.DOTALL).upper()
+    tokens = re.findall(r"\b[A-Z]+\b", normalized_q)
+
+    for forbidden in forbidden_tokens:
+        if forbidden in tokens:
+            return {
+                "query": query,
+                "success": False,
+                "columns": [],
+                "rows": [],
+                "total_rows": 0,
+                "execution_time": 0.0,
+                "error": f"Security restriction: '{forbidden}' statements are not permitted in SQL Studio. Only read-only SELECT queries are allowed.",
+            }
+
+    start_time = time.time()
+    try:
+        conn = sqlite3.connect(":memory:")
+        # Register dataset under 'df' and 'data' and the dataset name sanitized
+        df.to_sql("df", conn, index=False, if_exists="replace")
+        df.to_sql("data", conn, index=False, if_exists="replace")
+        if session.active_dataset:
+            safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", session.active_dataset)
+            if safe_name and safe_name not in ("df", "data"):
+                df.to_sql(safe_name, conn, index=False, if_exists="replace")
+
+        result_df = pd.read_sql_query(q_clean, conn)
+        conn.close()
+        exec_ms = round((time.time() - start_time) * 1000, 2)
+
+        total_rows = len(result_df)
+        limited_df = result_df.head(limit)
+        sanitized_rows = sanitize_dataframe_for_json(limited_df)
+        cols = list(result_df.columns)
+
+        return {
+            "query": query,
+            "success": True,
+            "columns": cols,
+            "rows": sanitized_rows,
+            "total_rows": total_rows,
+            "execution_time": exec_ms,
+            "error": None,
+        }
+    except Exception as e:
+        exec_ms = round((time.time() - start_time) * 1000, 2)
+        return {
+            "query": query,
+            "success": False,
+            "columns": [],
+            "rows": [],
+            "total_rows": 0,
+            "execution_time": exec_ms,
+            "error": str(e),
+        }

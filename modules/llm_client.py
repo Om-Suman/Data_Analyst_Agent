@@ -161,6 +161,12 @@ def _friendly_http_error(status: int, body: str) -> str:
     return f"HTTP {status}: {body}"
 
 
+_DEPLETED_KEYS: set[str] = set()
+
+def reset_depleted_keys():
+    _DEPLETED_KEYS.clear()
+
+
 def query_llm(
     system_prompt: str,
     user_prompt: str,
@@ -176,6 +182,12 @@ def query_llm(
     Returns:
         (response_text, model_used)
     """
+    resolved_key = _resolve_api_key(api_key)
+    if not resolved_key:
+        return ("❌ LLM error: No API key configured.", "none")
+
+    if resolved_key in _DEPLETED_KEYS:
+        return ("❌ LLM error: " + _friendly_http_error(402, ""), "none")
 
     messages = [
         {"role": "system", "content": system_prompt},
@@ -219,9 +231,11 @@ def query_llm(
 
                 elif status in FATAL_STATUS_CODES:
 
+                    if status == 402:
+                        _DEPLETED_KEYS.add(resolved_key)
                     last_error = _friendly_http_error(status, body)
                     return (
-                        f"âŒ LLM error: {last_error}",
+                        f"❌ LLM error: {last_error}",
                         "none",
                     )
 

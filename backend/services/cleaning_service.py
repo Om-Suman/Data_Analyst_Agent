@@ -158,3 +158,103 @@ def rollback_dataset_version(session: SessionState, version_number: int) -> bool
     if not success:
         raise ValueError(f"Version {version_number} not found for dataset '{name}'.")
     return True
+
+
+def transform_column(session: SessionState, req: dict[str, Any]) -> dict[str, Any]:
+    name = session.active_dataset
+    if not name or name not in session.datasets:
+        raise ValueError("No active dataset selected.")
+
+    df = session.get_active_df()
+    if df is None:
+        raise ValueError("Active dataset DataFrame not found.")
+
+    df_copy = df.copy()
+    op = req.get("operation")
+    col = req.get("column")
+    target_type = req.get("target_type")
+    new_name = req.get("new_name")
+    expr = req.get("expression")
+    case_mode = req.get("case_mode")
+
+    msg = ""
+
+    if op == "rename":
+        if not new_name or not new_name.strip():
+            raise ValueError("New column name is required for rename.")
+        if col not in df_copy.columns:
+            raise ValueError(f"Column '{col}' not found.")
+        df_copy.rename(columns={col: new_name.strip()}, inplace=True)
+        msg = f"Renamed column '{col}' to '{new_name.strip()}'"
+
+    elif op == "drop":
+        if col not in df_copy.columns:
+            raise ValueError(f"Column '{col}' not found.")
+        df_copy.drop(columns=[col], inplace=True)
+        msg = f"Dropped column '{col}'"
+
+    elif op == "cast":
+        if col not in df_copy.columns:
+            raise ValueError(f"Column '{col}' not found.")
+        if target_type == "int":
+            df_copy[col] = pd.to_numeric(df_copy[col], errors="coerce").fillna(0).astype(int)
+        elif target_type == "float":
+            df_copy[col] = pd.to_numeric(df_copy[col], errors="coerce")
+        elif target_type == "datetime":
+            df_copy[col] = pd.to_datetime(df_copy[col], errors="coerce")
+        elif target_type == "string":
+            df_copy[col] = df_copy[col].astype(str)
+        elif target_type == "boolean":
+            df_copy[col] = df_copy[col].astype(bool)
+        elif target_type == "category":
+            df_copy[col] = df_copy[col].astype("category")
+        else:
+            raise ValueError(f"Unsupported target type '{target_type}'")
+        msg = f"Converted column '{col}' dtype to {target_type}"
+
+    elif op == "string_case":
+        if col not in df_copy.columns:
+            raise ValueError(f"Column '{col}' not found.")
+        str_series = df_copy[col].astype(str)
+        if case_mode == "upper":
+            df_copy[col] = str_series.str.upper()
+        elif case_mode == "lower":
+            df_copy[col] = str_series.str.lower()
+        elif case_mode == "title":
+            df_copy[col] = str_series.str.title()
+        elif case_mode == "trim":
+            df_copy[col] = str_series.str.strip()
+        else:
+            raise ValueError(f"Unsupported case mode '{case_mode}'")
+        msg = f"Applied '{case_mode}' string transformation to '{col}'"
+
+    elif op in ("math_expr", "create_column"):
+        if not expr or not expr.strip():
+            raise ValueError("Expression is required.")
+        # Safe evaluation in isolated namespace with pandas Series
+        safe_dict = {c: df_copy[c] for c in df_copy.columns}
+        safe_dict["np"] = np
+        safe_dict["pd"] = pd
+        # Target column is col if specified, or new_name
+        dest_col = col if (col and op == "math_expr") else (new_name or col or "new_col")
+        try:
+            result_series = eval(expr, {"__builtins__": {}}, safe_dict)
+            df_copy[dest_col] = result_series
+            msg = f"Evaluated expression '{expr}' into column '{dest_col}'"
+        except Exception as e:
+            raise ValueError(f"Failed to evaluate expression '{expr}': {str(e)}")
+    else:
+        raise ValueError(f"Unknown operation '{op}'")
+
+    session.update_dataset(name, df_copy, description=msg)
+    preview = sanitize_dataframe_for_json(df_copy.head(20))
+
+    return {
+        "success": True,
+        "operation": op,
+        "message": msg,
+        "rows": len(df_copy),
+        "cols": len(df_copy.columns),
+        "columns": list(df_copy.columns),
+        "sample_preview": preview,
+    }

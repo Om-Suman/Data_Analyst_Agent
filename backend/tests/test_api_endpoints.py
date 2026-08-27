@@ -272,3 +272,77 @@ def test_document_qa_endpoint(client):
     data = qa_res.json()
     assert "answer" in data
     assert len(data["sources"]) > 0
+
+
+def test_sql_query_endpoint(client):
+    client.post("/api/datasets/sample", json={"sample_name": "Sales Data"})
+    res = client.post(
+        "/api/query/sql",
+        json={"query": "SELECT region, SUM(sales) as total_sales FROM df GROUP BY region ORDER BY total_sales DESC"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["success"] is True
+    assert "region" in data["columns"]
+    assert "total_sales" in data["columns"]
+    assert len(data["rows"]) > 0
+
+    # Test forbidden statement
+    bad_res = client.post(
+        "/api/query/sql",
+        json={"query": "DROP TABLE df"},
+    )
+    assert bad_res.status_code == 200
+    bad_data = bad_res.json()
+    assert bad_data["success"] is False
+    assert "restriction" in bad_data["error"].lower()
+
+
+def test_column_transform_endpoint(client):
+    client.post("/api/datasets/sample", json={"sample_name": "Sales Data"})
+
+    # Rename
+    res_rename = client.post(
+        "/api/cleaning/transform-column",
+        json={"column": "profit", "operation": "rename", "new_name": "net_profit"},
+    )
+    assert res_rename.status_code == 200
+    assert "net_profit" in res_rename.json()["columns"]
+
+    # String case
+    res_case = client.post(
+        "/api/cleaning/transform-column",
+        json={"column": "region", "operation": "string_case", "case_mode": "upper"},
+    )
+    assert res_case.status_code == 200
+    assert res_case.json()["success"] is True
+
+
+def test_dashboard_pins_endpoint(client):
+    client.post("/api/datasets/sample", json={"sample_name": "Sales Data"})
+
+    # Pin chart
+    pin_res = client.post(
+        "/api/datasets/dashboard/pins",
+        json={
+            "title": "Sales by Region",
+            "chart_type": "Bar Chart",
+            "figure_spec": {"data": [], "layout": {}},
+            "source_page": "Visualizations",
+            "notes": "Key revenue driver",
+        },
+    )
+    assert pin_res.status_code == 200
+    pin_item = pin_res.json()
+    assert "id" in pin_item
+    assert pin_item["title"] == "Sales by Region"
+
+    # List pins
+    list_res = client.get("/api/datasets/dashboard/pins")
+    assert list_res.status_code == 200
+    pins = list_res.json()["pinned_charts"]
+    assert len(pins) >= 1
+
+    # Delete pin
+    del_res = client.delete(f"/api/datasets/dashboard/pins/{pin_item['id']}")
+    assert del_res.status_code == 200
