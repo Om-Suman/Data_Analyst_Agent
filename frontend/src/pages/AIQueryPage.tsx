@@ -212,15 +212,14 @@ export const AIQueryPage: React.FC = () => {
                   Route: {currentResponse.route}
                 </span>
 
-                {currentResponse.model_used && (
-                  <span className={`px-2.5 py-1 rounded text-xs font-medium border ${
-                    currentResponse.model_used.includes('offline_analytic_engine')
-                      ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-                      : 'bg-purple-500/10 text-purple-400 border-purple-500/20'
-                  }`}>
-                    {currentResponse.model_used.includes('offline_analytic_engine')
-                      ? '⚡ Offline Analytic Engine'
-                      : `Model: ${currentResponse.model_used}`}
+                {currentResponse.model_used && currentResponse.model_used !== 'none' && (
+                  <span className="px-2.5 py-1 rounded text-xs font-medium border bg-purple-500/10 text-purple-400 border-purple-500/20">
+                    Model: {currentResponse.model_used}
+                  </span>
+                )}
+                {(!currentResponse.model_used || currentResponse.model_used === 'none') && (
+                  <span className="px-2.5 py-1 rounded text-xs font-medium border bg-rose-500/10 text-rose-400 border-rose-500/20">
+                    LLM Unavailable
                   </span>
                 )}
 

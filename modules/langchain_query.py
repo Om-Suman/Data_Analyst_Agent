@@ -276,7 +276,7 @@ def _build_codegen_chain():
 def _generate_code(df: pd.DataFrame, question: str, history: list | None, max_tokens: int):
     resolved_key = _resolve_api_key()
     if not resolved_key or resolved_key in _DEPLETED_KEYS:
-        return ("❌ Credits depleted or no API key", "none", False)
+        return ("❌ LLM is not working right now. Please configure your API key in Settings.", "none", False)
 
     prompt_text = build_context(df, question, history)
 
@@ -343,10 +343,16 @@ def run_query_langchain(
     code_blocks = extract_python_code(response)
 
     if response.startswith("❌") or not code_blocks:
-        fallback_code = generate_smart_fallback_code(df, question)
-        code_blocks = [fallback_code]
-        result["model_used"] = "offline_analytic_engine"
-        result["code_generation_response"] = f"```python\n{fallback_code}\n```"
+        msg = "LLM is not working right now. Please configure your API key in Settings." if not _resolve_api_key() else "LLM is not working right now."
+        if response.startswith("❌"):
+            msg = response.replace("❌", "").strip()
+        result["insights"] = f"### ⚠️ LLM Unavailable\n\n{msg}"
+        result["llm_response"] = result["insights"]
+        result["error"] = msg
+        result["model_used"] = "none"
+        result["code_blocks"] = []
+        result["execution_results"] = []
+        return result
 
     result["code_blocks"] = code_blocks
 

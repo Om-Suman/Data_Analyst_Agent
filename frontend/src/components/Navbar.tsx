@@ -101,18 +101,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleCopilot, isCopilotOpen }
           <span>SQL Studio</span>
         </NavLink>
 
-        {/* API Key Status Pill */}
-        <NavLink
-          to="/settings"
-          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border bg-slate-100 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-400 dark:hover:border-slate-700 transition-colors"
-          title="Configure API tokens in Settings"
-        >
-          <Key className={`h-3.5 w-3.5 ${config?.has_api_key ? 'text-emerald-500' : 'text-amber-500'}`} />
-          <span>
-            {config?.has_api_key ? `HF: ${config.api_key_masked}` : 'HF API: Set Key'}
-          </span>
-        </NavLink>
-
         {/* Theme Switcher Toggle Button */}
         <button
           onClick={toggleTheme}

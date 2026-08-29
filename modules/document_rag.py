@@ -243,15 +243,12 @@ CONTEXT:
     )
 
     if response.startswith("❌") or not response.strip():
-        response = (
-            "I found relevant context, but the model call was not available. "
-            "Here is the retrieved text:\n\n" + context
-        )
+        response = "LLM is not working right now. Please configure your API key in Settings to answer document questions."
 
     return {
         "answer": response.strip(),
         "sources": retrieved_chunks,
         "engine": engine,
         "model_used": model_used,
-        "error": None,
+        "error": None if not response.startswith("LLM is not working right now") else "LLM is not working right now.",
     }

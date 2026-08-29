@@ -86,6 +86,8 @@ def compute_correlations(
         raise ValueError("Need at least 2 numeric columns for correlation analysis.")
 
     corr_df = df[numeric_cols].corr(method=method).round(4)
+    # Replace NaN values with 0.0 to prevent validation errors
+    corr_df = corr_df.fillna(0.0)
     matrix = {str(col): {str(k): to_json_compatible(v) for k, v in corr_df[col].to_dict().items()} for col in corr_df.columns}
 
     # Top pairs

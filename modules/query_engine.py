@@ -669,8 +669,8 @@ def generate_final_insights(
         timeout=15,
     )
 
-    if response.startswith("❌") or not response.strip() or "LLM error" in response:
-        return build_fallback_insights(exec_results, question), "offline_analytic_engine"
+    if response.startswith("❌") or not response.strip() or "LLM is not working right now" in response:
+        return "### ⚠️ LLM Unavailable\n\nLLM is not working right now.", "none"
 
     return response.strip(), model_used
 
@@ -712,10 +712,14 @@ def run_query(
     code_blocks = extract_python_code(response)
 
     if response.startswith("❌") or not code_blocks:
-        fallback_code = generate_smart_fallback_code(df, question)
-        code_blocks = [fallback_code]
-        result["model_used"] = "offline_analytic_engine"
-        result["code_generation_response"] = f"```python\n{fallback_code}\n```"
+        msg = "LLM is not working right now. Please configure your API key in Settings." if not response.startswith("❌") else response.replace("❌", "").strip()
+        result["insights"] = f"### ⚠️ LLM Unavailable\n\n{msg}"
+        result["llm_response"] = result["insights"]
+        result["error"] = msg
+        result["model_used"] = "none"
+        result["code_blocks"] = []
+        result["execution_results"] = []
+        return result
 
     result["code_blocks"] = code_blocks
     result["insights"] = ""

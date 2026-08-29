@@ -184,10 +184,10 @@ def query_llm(
     """
     resolved_key = _resolve_api_key(api_key)
     if not resolved_key:
-        return ("❌ LLM error: No API key configured.", "none")
+        return ("❌ LLM is not working right now. Please configure your API key in Settings.", "none")
 
     if resolved_key in _DEPLETED_KEYS:
-        return ("❌ LLM error: " + _friendly_http_error(402, ""), "none")
+        return ("❌ LLM is not working right now: " + _friendly_http_error(402, ""), "none")
 
     messages = [
         {"role": "system", "content": system_prompt},
@@ -235,7 +235,7 @@ def query_llm(
                         _DEPLETED_KEYS.add(resolved_key)
                     last_error = _friendly_http_error(status, body)
                     return (
-                        f"❌ LLM error: {last_error}",
+                        f"❌ LLM is not working right now: {last_error}",
                         "none",
                     )
 
@@ -270,7 +270,7 @@ def query_llm(
                 break
 
     return (
-        f"❌ LLM error after all retries: {last_error}",
+        f"❌ LLM is not working right now: {last_error or 'Connection failed'}",
         "none",
     )
 
