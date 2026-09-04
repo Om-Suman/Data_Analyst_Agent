@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Sparkles,
   Send,
@@ -16,30 +16,32 @@ import {
   ChevronUp,
   Table as TableIcon,
   BarChart3,
-} from 'lucide-react';
-import { useDataset } from '../context/DatasetContext';
-import { queryApi } from '../api/client';
-import { QueryHistoryItem, QueryResponse } from '../types';
-import { PlotlyChart } from '../components/PlotlyChart';
-import { DataTable } from '../components/DataTable';
-import { MarkdownRenderer } from '../components/MarkdownRenderer';
+} from "lucide-react";
+import { useDataset } from "../context/DatasetContext";
+import { queryApi } from "../api/client";
+import { QueryHistoryItem, QueryResponse } from "../types";
+import { PlotlyChart } from "../components/PlotlyChart";
+import { DataTable } from "../components/DataTable";
+import { MarkdownRenderer } from "../components/MarkdownRenderer";
 
 export const AIQueryPage: React.FC = () => {
   const { activeDataset, hasDataset } = useDataset();
-  const [question, setQuestion] = useState('');
+  const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
-  const [currentResponse, setCurrentResponse] = useState<QueryResponse | null>(null);
+  const [currentResponse, setCurrentResponse] = useState<QueryResponse | null>(
+    null,
+  );
   const [history, setHistory] = useState<QueryHistoryItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [copiedAnswer, setCopiedAnswer] = useState(false);
   const [showCode, setShowCode] = useState(true);
 
   const promptSuggestions = [
-    'What are the top 5 highest sales categories?',
-    'Plot a correlation heatmap between all numeric metrics',
-    'Calculate the average and median values by category',
-    'Forecast sales for the next 30 days',
-    'Detect anomalies and outliers in our data',
+    "What are the top 5 highest sales categories?",
+    "Plot a correlation heatmap between all numeric metrics",
+    "Calculate the average and median values by category",
+    "Forecast sales for the next 30 days",
+    "Detect anomalies and outliers in our data",
   ];
 
   const fetchHistory = async () => {
@@ -64,9 +66,9 @@ export const AIQueryPage: React.FC = () => {
       const res = await queryApi.ask(q);
       setCurrentResponse(res);
       await fetchHistory();
-      if (!qText) setQuestion('');
+      if (!qText) setQuestion("");
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to process AI query.');
+      setError(err.response?.data?.detail || "Failed to process AI query.");
     } finally {
       setLoading(false);
     }
@@ -80,7 +82,7 @@ export const AIQueryPage: React.FC = () => {
   };
 
   const handleClearHistory = async () => {
-    if (!window.confirm('Clear all query history?')) return;
+    if (!window.confirm("Clear all query history?")) return;
     try {
       await queryApi.clearHistory();
       setHistory([]);
@@ -91,7 +93,7 @@ export const AIQueryPage: React.FC = () => {
 
   if (!hasDataset) {
     return (
-      <div className="p-8 text-center text-slate-500 border border-slate-800 rounded-xl bg-slate-900/30">
+      <div className="p-8 text-center text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900/30 shadow-sm">
         Please load or select a dataset first to execute AI Data Queries.
       </div>
     );
@@ -101,16 +103,18 @@ export const AIQueryPage: React.FC = () => {
   const getCleanDataframes = () => {
     if (!currentResponse?.execution_results) return [];
     const allTables: { name: string; rows: any[] }[] = [];
-    
+
     currentResponse.execution_results.forEach((res) => {
       if (!res.dataframes) return;
       const entries = Object.entries(res.dataframes);
-      const hasSortedOrResult = entries.some(([k]) => ['result_df', 'sorted_df', 'agg_stats'].includes(k));
+      const hasSortedOrResult = entries.some(([k]) =>
+        ["result_df", "sorted_df", "agg_stats"].includes(k),
+      );
 
       entries.forEach(([name, rows]) => {
         if (!Array.isArray(rows) || rows.length === 0) return;
         // If result_df or sorted_df exists, skip intermediate 'grouped'
-        if (hasSortedOrResult && name === 'grouped') return;
+        if (hasSortedOrResult && name === "grouped") return;
         allTables.push({ name, rows });
       });
     });
@@ -123,27 +127,29 @@ export const AIQueryPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-blue-400" />
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-blue-500 dark:text-blue-400" />
           Natural Language AI Data Query
         </h2>
-        <p className="text-xs text-slate-400 mt-1">
-          Ask any analytical question in plain English. The agent routes queries, runs safe pandas/plotly analytics, and synthesizes executive business intelligence.
+        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+          Ask any analytical question in plain English. The agent routes
+          queries, runs safe pandas/plotly analytics, and synthesizes executive
+          business intelligence.
         </p>
       </div>
 
       {/* Query Input Box */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 space-y-3 shadow-lg">
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4 sm:p-5 space-y-3 shadow-sm">
         <div className="flex gap-2">
           <input
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') handleAsk();
+              if (e.key === "Enter") handleAsk();
             }}
             placeholder="Ask anything (e.g. 'What are the top 5 highest sales categories?')..."
-            className="flex-1 bg-slate-950/80 border border-slate-700/80 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 shadow-inner"
+            className="flex-1 bg-slate-50 dark:bg-slate-950/80 border border-slate-300 dark:border-slate-700/80 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-inner transition-all"
           />
           <button
             onClick={() => handleAsk()}
@@ -166,12 +172,14 @@ export const AIQueryPage: React.FC = () => {
 
         {/* Suggestion Pills */}
         <div className="flex flex-wrap items-center gap-2 pt-1">
-          <span className="text-[11px] text-slate-500">Suggestions:</span>
+          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+            Suggestions:
+          </span>
           {promptSuggestions.map((s, idx) => (
             <button
               key={idx}
               onClick={() => handleAsk(s)}
-              className="text-[11px] px-2.5 py-1 rounded-full bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 border border-slate-700/60 transition-colors"
+              className="text-[11px] px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700/60 transition-colors"
             >
               {s}
             </button>
@@ -180,7 +188,7 @@ export const AIQueryPage: React.FC = () => {
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl flex items-center gap-3 text-xs font-medium border bg-rose-950/40 border-rose-500/30 text-rose-300">
+        <div className="p-4 rounded-xl flex items-center gap-3 text-xs font-medium border bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-500/30 text-rose-800 dark:text-rose-300">
           <AlertCircle className="h-4 w-4 flex-shrink-0" />
           <span>{error}</span>
         </div>
@@ -190,52 +198,56 @@ export const AIQueryPage: React.FC = () => {
       {currentResponse && (
         <div className="space-y-6">
           {/* Answer Card */}
-          <div className="rounded-xl border border-blue-500/30 bg-gradient-to-b from-slate-900/90 to-slate-900/60 p-6 space-y-4 shadow-xl">
+          <div className="rounded-2xl border border-blue-200 dark:border-blue-500/30 bg-gradient-to-b from-blue-50/40 via-white to-white dark:from-slate-900/90 dark:to-slate-900/60 p-6 space-y-4 shadow-sm dark:shadow-xl">
             {/* Card Header & Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400">
+                <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 text-blue-600 dark:text-blue-400">
                   <Bot className="h-5 w-5" />
                 </div>
                 <div>
-                  <span className="text-xs font-bold text-white uppercase tracking-wider block">
+                  <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider block">
                     Analysis Findings & Intelligence
                   </span>
-                  <span className="text-[11px] text-slate-400">
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
                     Question: "{currentResponse.question}"
                   </span>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="px-2.5 py-1 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-mono">
+                <span className="px-2.5 py-1 rounded bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20 text-xs font-mono">
                   Route: {currentResponse.route}
                 </span>
 
-                {currentResponse.model_used && currentResponse.model_used !== 'none' && (
-                  <span className="px-2.5 py-1 rounded text-xs font-medium border bg-purple-500/10 text-purple-400 border-purple-500/20">
-                    Model: {currentResponse.model_used}
-                  </span>
-                )}
-                {(!currentResponse.model_used || currentResponse.model_used === 'none') && (
-                  <span className="px-2.5 py-1 rounded text-xs font-medium border bg-rose-500/10 text-rose-400 border-rose-500/20">
+                {currentResponse.model_used &&
+                  currentResponse.model_used !== "none" && (
+                    <span className="px-2.5 py-1 rounded text-xs font-medium border bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-500/20">
+                      Model: {currentResponse.model_used}
+                    </span>
+                  )}
+                {(!currentResponse.model_used ||
+                  currentResponse.model_used === "none") && (
+                  <span className="px-2.5 py-1 rounded text-xs font-medium border bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/20">
                     LLM Unavailable
                   </span>
                 )}
 
                 <button
                   onClick={handleCopyAnswer}
-                  className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium border border-slate-200 dark:border-slate-700 transition-colors"
                   title="Copy formatted insights"
                 >
                   {copiedAnswer ? (
                     <>
-                      <Check className="h-3.5 w-3.5 text-emerald-400" />
-                      <span className="text-emerald-400">Copied</span>
+                      <Check className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400" />
+                      <span className="text-emerald-600 dark:text-emerald-400">
+                        Copied
+                      </span>
                     </>
                   ) : (
                     <>
-                      <Copy className="h-3.5 w-3.5 text-slate-400" />
+                      <Copy className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
                       <span>Copy Insights</span>
                     </>
                   )}
@@ -250,7 +262,7 @@ export const AIQueryPage: React.FC = () => {
                   currentResponse.insights ||
                   (currentResponse.execution_results?.[0]?.stdout
                     ? `### 📊 Execution Output\n\`\`\`text\n${currentResponse.execution_results[0].stdout}\n\`\`\``
-                    : '### 🎯 Executive Summary\nAnalysis completed successfully.')
+                    : "### 🎯 Executive Summary\nAnalysis completed successfully.")
                 }
                 showKpiCards={true}
               />
@@ -258,10 +270,10 @@ export const AIQueryPage: React.FC = () => {
 
             {/* Render any generated Plotly figures from tool result */}
             {currentResponse.tool_result?.figure_spec && (
-              <div className="pt-4 border-t border-slate-800/80">
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-800/80">
                 <div className="flex items-center gap-2 mb-2">
-                  <BarChart3 className="h-4 w-4 text-blue-400" />
-                  <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                  <BarChart3 className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                     Interactive Projection Visual
                   </span>
                 </div>
@@ -278,10 +290,13 @@ export const AIQueryPage: React.FC = () => {
             {currentResponse.execution_results?.map((res, i) => (
               <div key={i} className="space-y-4 pt-2">
                 {res.figures?.map((fig, figIdx) => (
-                  <div key={figIdx} className="pt-4 border-t border-slate-800/80">
+                  <div
+                    key={figIdx}
+                    className="pt-4 border-t border-slate-200 dark:border-slate-800/80"
+                  >
                     <div className="flex items-center gap-2 mb-2">
-                      <BarChart3 className="h-4 w-4 text-blue-400" />
-                      <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                      <BarChart3 className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                         Interactive Data Visualization
                       </span>
                     </div>
@@ -298,17 +313,18 @@ export const AIQueryPage: React.FC = () => {
 
             {/* Render Clean Deduplicated Generated Tables */}
             {cleanDataframes.length > 0 && (
-              <div className="space-y-4 pt-4 border-t border-slate-800/80">
+              <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800/80">
                 {cleanDataframes.map((table, idx) => (
                   <div key={idx} className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold text-slate-300 flex items-center gap-2">
-                        <TableIcon className="h-4 w-4 text-emerald-400" />
-                        {table.name === 'result_df' || table.name === 'sorted_df'
+                      <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                        <TableIcon className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
+                        {table.name === "result_df" ||
+                        table.name === "sorted_df"
                           ? `Ranked Output Table (${table.rows.length} records)`
-                          : table.name === 'agg_stats'
-                          ? `Aggregated Metrics Summary (${table.rows.length} records)`
-                          : `Data Table: ${table.name} (${table.rows.length} records)`}
+                          : table.name === "agg_stats"
+                            ? `Aggregated Metrics Summary (${table.rows.length} records)`
+                            : `Data Table: ${table.name} (${table.rows.length} records)`}
                       </p>
                     </div>
                     <DataTable data={table.rows} pageSize={10} />
@@ -320,23 +336,27 @@ export const AIQueryPage: React.FC = () => {
 
           {/* Generated Code Sandbox Blocks */}
           {currentResponse.code_blocks?.length > 0 && (
-            <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-3">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 p-4 space-y-3 shadow-sm">
               <button
                 onClick={() => setShowCode(!showCode)}
-                className="w-full flex items-center justify-between text-xs text-slate-400 hover:text-slate-200 transition-colors"
+                className="w-full flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
               >
-                <span className="flex items-center gap-2 font-semibold text-slate-300">
-                  <Terminal className="h-4 w-4 text-emerald-400" />
+                <span className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-300">
+                  <Terminal className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
                   Executed Python Analytics Code
                 </span>
                 <div className="flex items-center gap-3">
                   {currentResponse.execution_results?.[0]?.execution_time && (
-                    <span className="flex items-center gap-1 font-mono text-[11px] text-slate-400">
+                    <span className="flex items-center gap-1 font-mono text-[11px] text-slate-500 dark:text-slate-400">
                       <Clock className="h-3 w-3" />
                       {currentResponse.execution_results[0].execution_time}s
                     </span>
                   )}
-                  {showCode ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  {showCode ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
                 </div>
               </button>
 
@@ -345,7 +365,7 @@ export const AIQueryPage: React.FC = () => {
                   {currentResponse.code_blocks.map((code, idx) => (
                     <pre
                       key={idx}
-                      className="p-4 rounded-lg bg-[#080d1a] border border-slate-800 text-xs font-mono text-emerald-300 overflow-x-auto leading-relaxed"
+                      className="p-4 rounded-xl bg-slate-900 dark:bg-[#080d1a] border border-slate-800 text-xs font-mono text-emerald-400 dark:text-emerald-300 overflow-x-auto leading-relaxed shadow-inner"
                     >
                       <code>{code}</code>
                     </pre>
@@ -357,19 +377,18 @@ export const AIQueryPage: React.FC = () => {
         </div>
       )}
 
-
       {/* Query History Drawer */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-5 space-y-4">
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-5 space-y-4 shadow-sm">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
-            <Clock className="h-4 w-4 text-blue-400" />
+          <h3 className="text-sm font-bold text-slate-900 dark:text-slate-200 flex items-center gap-2">
+            <Clock className="h-4 w-4 text-blue-500 dark:text-blue-400" />
             Query History ({history.length})
           </h3>
           <div className="flex items-center gap-2">
             <a
               href={queryApi.getExportUrl()}
               download="query_history.csv"
-              className="flex items-center gap-1 text-xs px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors"
+              className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-colors font-medium"
             >
               <Download className="h-3 w-3" />
               Export CSV
@@ -377,7 +396,7 @@ export const AIQueryPage: React.FC = () => {
             {history.length > 0 && (
               <button
                 onClick={handleClearHistory}
-                className="p-1 rounded hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors"
+                className="p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/20 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
                 title="Clear history"
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -387,22 +406,28 @@ export const AIQueryPage: React.FC = () => {
         </div>
 
         {history.length === 0 ? (
-          <div className="text-center py-6 text-xs text-slate-500">No query history yet.</div>
+          <div className="text-center py-6 text-xs text-slate-500 dark:text-slate-400">
+            No query history yet.
+          </div>
         ) : (
           <div className="space-y-2 max-h-80 overflow-y-auto">
             {history.map((item) => (
               <div
                 key={item.id}
                 onClick={() => handleAsk(item.question)}
-                className="p-3 rounded-lg bg-slate-800/30 hover:bg-slate-800/70 border border-slate-700/50 cursor-pointer transition-all space-y-1"
+                className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/30 hover:bg-blue-50/60 dark:hover:bg-slate-800/70 border border-slate-200 dark:border-slate-700/50 cursor-pointer transition-all space-y-1 shadow-sm"
               >
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-white truncate max-w-md">"{item.question}"</span>
-                  <span className="text-[10px] text-slate-500 font-mono">
+                  <span className="font-semibold text-slate-900 dark:text-white truncate max-w-md">
+                    "{item.question}"
+                  </span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
                     {new Date(item.timestamp).toLocaleTimeString()}
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-400 line-clamp-1">{item.result_summary}</p>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-1">
+                  {item.result_summary}
+                </p>
               </div>
             ))}
           </div>

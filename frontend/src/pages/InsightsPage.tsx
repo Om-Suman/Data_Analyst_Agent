@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Lightbulb,
   Sparkles,
@@ -9,10 +9,10 @@ import {
   CheckCircle2,
   AlertCircle,
   Copy,
-} from 'lucide-react';
-import { useDataset } from '../context/DatasetContext';
-import { insightsApi } from '../api/client';
-import { AIInsightsResponse } from '../types';
+} from "lucide-react";
+import { useDataset } from "../context/DatasetContext";
+import { insightsApi } from "../api/client";
+import { AIInsightsResponse } from "../types";
 
 export const InsightsPage: React.FC = () => {
   const { hasDataset, config } = useDataset();
@@ -45,7 +45,10 @@ export const InsightsPage: React.FC = () => {
       const res = await insightsApi.getAIInsights(1500);
       setAiInsights(res);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to generate AI Business Insights.');
+      setError(
+        err.response?.data?.detail ||
+          "Failed to generate AI Business Insights.",
+      );
     } finally {
       setLoadingAi(false);
     }
@@ -57,10 +60,10 @@ export const InsightsPage: React.FC = () => {
 ${aiInsights.executive_summary}
 
 Key Findings:
-${aiInsights.key_findings.join('\n')}
+${aiInsights.key_findings.join("\n")}
 
 Recommendations:
-${aiInsights.recommendations.join('\n')}`;
+${aiInsights.recommendations.join("\n")}`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -68,8 +71,9 @@ ${aiInsights.recommendations.join('\n')}`;
 
   if (!hasDataset) {
     return (
-      <div className="p-8 text-center text-slate-500 border border-slate-800 rounded-xl bg-slate-900/30">
-        Please load or select a dataset first to generate statistical and AI business insights.
+      <div className="p-8 text-center text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900/30 shadow-sm">
+        Please load or select a dataset first to generate statistical and AI
+        business insights.
       </div>
     );
   }
@@ -78,46 +82,49 @@ ${aiInsights.recommendations.join('\n')}`;
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-            <Lightbulb className="h-5 w-5 text-amber-400" />
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+            <Lightbulb className="h-5 w-5 text-amber-500 dark:text-amber-400" />
             Insights & Data Stories
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Automated statistical patterns and deep AI executive business intelligence
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Automated statistical patterns and deep AI executive business
+            intelligence
           </p>
         </div>
 
         <button
           onClick={handleGenerateAI}
           disabled={loadingAi}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-semibold shadow-md shadow-blue-600/20 transition-all"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs sm:text-sm font-semibold shadow-md shadow-blue-600/20 transition-all"
         >
           <Sparkles className="h-4 w-4" />
-          {loadingAi ? 'Generating AI Report...' : 'Generate Full AI Story'}
+          {loadingAi ? "Generating AI Report..." : "Generate Full AI Story"}
         </button>
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl flex items-center gap-3 text-xs font-medium border bg-rose-950/40 border-rose-500/30 text-rose-300">
+        <div className="p-4 rounded-xl flex items-center gap-3 text-xs font-medium border bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-500/30 text-rose-800 dark:text-rose-300">
           <AlertCircle className="h-4 w-4 flex-shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
       {/* Quick Statistical Facts */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-5 space-y-3">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-emerald-400" />
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-5 sm:p-6 space-y-3 shadow-sm">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-400 flex items-center gap-2">
+          <TrendingUp className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
           Instant Statistical Observations
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
           {quickInsights.map((insight, idx) => (
             <div
               key={idx}
-              className="flex items-start gap-2.5 p-3 rounded-lg bg-slate-800/30 border border-slate-700/50 text-xs text-slate-300"
+              className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700/50 text-xs text-slate-700 dark:text-slate-300 shadow-sm"
             >
-              <span className="text-blue-400 font-bold">•</span>
-              <span>{insight}</span>
+              <span className="text-blue-500 dark:text-blue-400 font-bold">
+                •
+              </span>
+              <span className="leading-relaxed">{insight}</span>
             </div>
           ))}
         </div>
@@ -127,25 +134,29 @@ ${aiInsights.recommendations.join('\n')}`;
       {aiInsights && (
         <div className="space-y-6">
           {/* Executive Summary */}
-          <div className="rounded-xl border border-blue-500/30 bg-gradient-to-br from-blue-950/20 via-slate-900/60 to-slate-900/40 p-6 space-y-3 shadow-xl">
+          <div className="rounded-2xl border border-blue-200 dark:border-blue-500/30 bg-gradient-to-br from-blue-50/70 via-white to-white dark:from-blue-950/20 dark:via-slate-900/60 dark:to-slate-900/40 p-6 space-y-3 shadow-sm dark:shadow-xl">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-blue-400">Executive Summary</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                Executive Summary
+              </span>
               <button
                 onClick={handleCopy}
-                className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200"
+                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 font-medium transition-colors"
               >
                 <Copy className="h-3.5 w-3.5" />
-                {copied ? 'Copied!' : 'Copy Summary'}
+                {copied ? "Copied!" : "Copy Summary"}
               </button>
             </div>
-            <p className="text-sm text-slate-200 leading-relaxed">{aiInsights.executive_summary}</p>
+            <p className="text-sm text-slate-800 dark:text-slate-200 leading-relaxed font-medium">
+              {aiInsights.executive_summary}
+            </p>
           </div>
 
           {/* Key Findings & Recommendations Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Key Findings */}
-            <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-5 space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-5 sm:p-6 space-y-3 shadow-sm">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4" />
                 Key Findings ({aiInsights.key_findings.length})
               </h4>
@@ -153,7 +164,7 @@ ${aiInsights.recommendations.join('\n')}`;
                 {aiInsights.key_findings.map((f, idx) => (
                   <li
                     key={idx}
-                    className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60 text-xs text-slate-300"
+                    className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 text-xs text-slate-800 dark:text-slate-300 leading-relaxed"
                   >
                     {f}
                   </li>
@@ -162,8 +173,8 @@ ${aiInsights.recommendations.join('\n')}`;
             </div>
 
             {/* Recommendations */}
-            <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-5 space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-blue-400 flex items-center gap-2">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-5 sm:p-6 space-y-3 shadow-sm">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4" />
                 Strategic Recommendations ({aiInsights.recommendations.length})
               </h4>
@@ -171,7 +182,7 @@ ${aiInsights.recommendations.join('\n')}`;
                 {aiInsights.recommendations.map((r, idx) => (
                   <li
                     key={idx}
-                    className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60 text-xs text-slate-300"
+                    className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 text-xs text-slate-800 dark:text-slate-300 leading-relaxed"
                   >
                     {r}
                   </li>
@@ -183,8 +194,8 @@ ${aiInsights.recommendations.join('\n')}`;
           {/* Opportunities & Risks Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Opportunities */}
-            <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-5 space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-5 sm:p-6 space-y-3 shadow-sm">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-2">
                 <Sparkles className="h-4 w-4" />
                 Growth Opportunities
               </h4>
@@ -192,7 +203,7 @@ ${aiInsights.recommendations.join('\n')}`;
                 {aiInsights.opportunities?.map((op, idx) => (
                   <li
                     key={idx}
-                    className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60 text-xs text-slate-300"
+                    className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 text-xs text-slate-800 dark:text-slate-300 leading-relaxed"
                   >
                     {op}
                   </li>
@@ -201,8 +212,8 @@ ${aiInsights.recommendations.join('\n')}`;
             </div>
 
             {/* Risks */}
-            <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-5 space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-rose-400 flex items-center gap-2">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-5 sm:p-6 space-y-3 shadow-sm">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-2">
                 <AlertOctagon className="h-4 w-4" />
                 Identified Risks & Caveats
               </h4>
@@ -210,7 +221,7 @@ ${aiInsights.recommendations.join('\n')}`;
                 {aiInsights.risks?.map((risk, idx) => (
                   <li
                     key={idx}
-                    className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60 text-xs text-slate-300"
+                    className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 text-xs text-slate-800 dark:text-slate-300 leading-relaxed"
                   >
                     {risk}
                   </li>
@@ -221,12 +232,14 @@ ${aiInsights.recommendations.join('\n')}`;
 
           {/* Narrative Data Story */}
           {aiInsights.data_story && (
-            <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-6 space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-purple-400" />
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-6 space-y-3 shadow-sm">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-400 flex items-center gap-2">
+                <BookOpen className="h-4 w-4 text-purple-500 dark:text-purple-400" />
                 Narrative Data Story
               </h4>
-              <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">{aiInsights.data_story}</p>
+              <p className="text-xs text-slate-800 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+                {aiInsights.data_story}
+              </p>
             </div>
           )}
         </div>
