@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Database,
   Columns,
@@ -14,16 +14,17 @@ import {
   Layers,
   Wrench,
   Lightbulb,
-} from 'lucide-react';
-import { useDataset } from '../context/DatasetContext';
-import { MetricCard } from '../components/MetricCard';
-import { PlotlyChart } from '../components/PlotlyChart';
-import { DataTable } from '../components/DataTable';
-import { queryApi } from '../api/client';
-import { QueryHistoryItem } from '../types';
+} from "lucide-react";
+import { useDataset } from "../context/DatasetContext";
+import { MetricCard } from "../components/MetricCard";
+import { PlotlyChart } from "../components/PlotlyChart";
+import { DataTable } from "../components/DataTable";
+import { queryApi } from "../api/client";
+import { QueryHistoryItem } from "../types";
 
 export const DashboardPage: React.FC = () => {
-  const { activeDataset, preview, previewLoading, hasDataset, pinnedCharts } = useDataset();
+  const { activeDataset, preview, previewLoading, hasDataset, pinnedCharts } =
+    useDataset();
   const [history, setHistory] = useState<QueryHistoryItem[]>([]);
 
   useEffect(() => {
@@ -44,7 +45,8 @@ export const DashboardPage: React.FC = () => {
             Enterprise Data Analytics Suite
           </h2>
           <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400">
-            To start querying, exploring, and building automated dashboards, please upload a dataset or load one of the instant demo datasets.
+            To start querying, exploring, and building automated dashboards,
+            please upload a dataset or load one of the instant demo datasets.
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-3">
@@ -68,24 +70,30 @@ export const DashboardPage: React.FC = () => {
   const numCount = preview?.numeric_cols?.length || 0;
   const catCount = preview?.categorical_cols?.length || 0;
   const dateCount = preview?.date_cols?.length || 0;
-  const otherCount = Math.max(0, (preview?.cols || 0) - numCount - catCount - dateCount);
+  const otherCount = Math.max(
+    0,
+    (preview?.cols || 0) - numCount - catCount - dateCount,
+  );
 
   const dtypePieSpec = {
     data: [
       {
-        values: [numCount, catCount, dateCount, otherCount].filter((v) => v > 0),
-        labels: ['Numeric', 'Categorical', 'Date/Time', 'Other'].slice(
-          0,
-          [numCount, catCount, dateCount, otherCount].filter((v) => v > 0).length
+        values: [numCount, catCount, dateCount, otherCount].filter(
+          (v) => v > 0,
         ),
-        type: 'pie',
+        labels: ["Numeric", "Categorical", "Date/Time", "Other"].slice(
+          0,
+          [numCount, catCount, dateCount, otherCount].filter((v) => v > 0)
+            .length,
+        ),
+        type: "pie",
         hole: 0.55,
-        marker: { colors: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'] },
-        textinfo: 'label+percent',
+        marker: { colors: ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"] },
+        textinfo: "label+percent",
       },
     ],
     layout: {
-      title: 'Column Types Composition',
+      title: "Column Types Composition",
       height: 280,
       margin: { l: 20, r: 20, t: 40, b: 20 },
       showlegend: false,
@@ -95,23 +103,35 @@ export const DashboardPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 p-6 rounded-3xl bg-gradient-to-r from-blue-950/40 via-slate-900/60 to-slate-900/40 border border-blue-500/20 shadow-md">
-        <div>
-          <span className="text-xs font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
+      <div className="relative overflow-hidden flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5 p-6 sm:p-7 rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 border border-blue-400/30 shadow-lg shadow-slate-900/10">
+        <div className="relative min-w-0">
+          <span className="text-[11px] font-bold text-blue-300 uppercase tracking-[0.16em] flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
             Active Workspace
           </span>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mt-1">
+          <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight leading-tight mt-2 drop-shadow-sm">
             {activeDataset?.name}
           </h2>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Source: <span className="text-slate-300 font-mono">{activeDataset?.source}</span> • Version:{' '}
-            <span className="text-blue-400 font-mono font-bold">v{activeDataset?.version}</span> •{' '}
-            {activeDataset?.rows.toLocaleString()} records
-          </p>
+          <div className="flex flex-wrap items-center gap-2 mt-3 text-[11px] sm:text-xs font-medium text-slate-200">
+            <span className="rounded-lg bg-white/10 border border-white/10 px-2.5 py-1">
+              Source:{" "}
+              <span className="text-white font-mono">
+                {activeDataset?.source}
+              </span>
+            </span>
+            <span className="rounded-lg bg-blue-400/15 border border-blue-300/20 px-2.5 py-1">
+              Version{" "}
+              <span className="text-blue-200 font-mono font-bold">
+                v{activeDataset?.version}
+              </span>
+            </span>
+            <span className="rounded-lg bg-emerald-400/10 border border-emerald-300/20 px-2.5 py-1 text-emerald-100">
+              {activeDataset?.rows.toLocaleString()} records
+            </span>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="relative flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
           <Link
             to="/sql"
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs sm:text-sm font-semibold border border-slate-700 transition-all"
@@ -133,14 +153,14 @@ export const DashboardPage: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           title="Total Rows"
-          value={activeDataset?.rows.toLocaleString() || '0'}
+          value={activeDataset?.rows.toLocaleString() || "0"}
           subtitle="Dataset record volume"
           icon={Database}
           color="blue"
         />
         <MetricCard
           title="Total Columns"
-          value={activeDataset?.cols.toLocaleString() || '0'}
+          value={activeDataset?.cols.toLocaleString() || "0"}
           subtitle={`${preview?.numeric_cols.length || 0} numeric, ${preview?.categorical_cols.length || 0} categorical`}
           icon={Columns}
           color="green"
@@ -150,19 +170,19 @@ export const DashboardPage: React.FC = () => {
           value={missingTotal.toLocaleString()}
           subtitle={`${((missingTotal / Math.max(1, (activeDataset?.rows || 1) * (activeDataset?.cols || 1))) * 100).toFixed(1)}% of all cells`}
           icon={AlertCircle}
-          color={missingTotal > 0 ? 'amber' : 'green'}
+          color={missingTotal > 0 ? "amber" : "green"}
         />
         <MetricCard
           title="Duplicate Rows"
           value={duplicateTotal.toLocaleString()}
           subtitle="Identical row signatures"
           icon={Copy}
-          color={duplicateTotal > 0 ? 'red' : 'green'}
+          color={duplicateTotal > 0 ? "red" : "green"}
         />
       </div>
 
       {/* Analytics Summary & Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 items-start gap-6">
         <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 space-y-3 shadow-sm">
           <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <BarChart2 className="h-4 w-4 text-blue-500" />
@@ -172,7 +192,7 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         {/* Quick Suite Navigation Hub */}
-        <div className="lg:col-span-2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 space-y-4 shadow-sm">
+        <div className="lg:col-span-2 min-h-[450px] flex flex-col rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 space-y-4 shadow-sm">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-emerald-500" />
@@ -230,6 +250,54 @@ export const DashboardPage: React.FC = () => {
             </Link>
           </div>
 
+          <div className="mt-auto pt-5 border-t border-slate-200 dark:border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                  <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
+                  Workspace Pulse
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  A quick read of the active dataset before you dive in.
+                </p>
+              </div>
+              <Link
+                to="/explorer"
+                className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1"
+              >
+                Open Explorer <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div className="rounded-xl bg-blue-50/70 dark:bg-blue-950/20 px-3.5 py-3">
+                <span className="block text-slate-500 dark:text-slate-400">
+                  Data volume
+                </span>
+                <strong className="block text-slate-900 dark:text-white mt-1 font-mono">
+                  {activeDataset?.rows.toLocaleString()} rows
+                </strong>
+              </div>
+              <div className="rounded-xl bg-emerald-50/70 dark:bg-emerald-950/20 px-3.5 py-3">
+                <span className="block text-slate-500 dark:text-slate-400">
+                  Schema mix
+                </span>
+                <strong className="block text-slate-900 dark:text-white mt-1">
+                  {numCount} numeric / {catCount} categorical
+                </strong>
+              </div>
+              <div className="rounded-xl bg-amber-50/70 dark:bg-amber-950/20 px-3.5 py-3">
+                <span className="block text-slate-500 dark:text-slate-400">
+                  Data quality
+                </span>
+                <strong className="block text-slate-900 dark:text-white mt-1">
+                  {missingTotal === 0
+                    ? "No missing values"
+                    : `${missingTotal.toLocaleString()} missing values`}
+                </strong>
+              </div>
+            </div>
+          </div>
+
           {/* Latest Query Activity */}
           {history.length > 0 && (
             <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
@@ -272,7 +340,11 @@ export const DashboardPage: React.FC = () => {
             Loading preview...
           </div>
         ) : (
-          <DataTable data={preview?.data || []} columns={preview?.columns} pageSize={10} />
+          <DataTable
+            data={preview?.data || []}
+            columns={preview?.columns}
+            pageSize={10}
+          />
         )}
       </div>
     </div>
