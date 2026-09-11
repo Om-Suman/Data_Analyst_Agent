@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   BarChart3,
   LineChart,
@@ -11,49 +11,50 @@ import {
   Sliders,
   Play,
   AlertCircle,
-} from 'lucide-react';
-import { useDataset } from '../context/DatasetContext';
-import { visualizationApi } from '../api/client';
-import { VisualizationResponse } from '../types';
-import { PlotlyChart } from '../components/PlotlyChart';
-import { useToast } from '../components/Toast';
+} from "lucide-react";
+import { useDataset } from "../context/DatasetContext";
+import { visualizationApi } from "../api/client";
+import { VisualizationResponse } from "../types";
+import { PlotlyChart } from "../components/PlotlyChart";
+import { useToast } from "../components/Toast";
 
 export const VisualizationsPage: React.FC = () => {
   const { preview, hasDataset } = useDataset();
   const { success, error: toastError } = useToast();
 
-  const [chartType, setChartType] = useState('Bar Chart');
-  const [xAxis, setXAxis] = useState('');
-  const [yAxis, setYAxis] = useState('');
-  const [colorCol, setColorCol] = useState('None');
-  const [sizeCol, setSizeCol] = useState('None');
+  const [chartType, setChartType] = useState("Bar Chart");
+  const [xAxis, setXAxis] = useState<string>("");
+  const [yAxis, setYAxis] = useState<string>("");
+  const [colorCol, setColorCol] = useState("None");
+  const [sizeCol, setSizeCol] = useState("None");
   const [topN, setTopN] = useState(20);
   const [nbins, setNbins] = useState(30);
   const [hole, setHole] = useState(0.0);
-  const [template, setTemplate] = useState('plotly_dark');
-  const [colorscale, setColorscale] = useState('Blues');
+  const [template, setTemplate] = useState("plotly_dark");
+  const [colorscale, setColorscale] = useState("Blues");
   const [trendline, setTrendline] = useState(false);
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState("");
 
   const [loading, setLoading] = useState(false);
-  const [chartResponse, setChartResponse] = useState<VisualizationResponse | null>(null);
+  const [chartResponse, setChartResponse] =
+    useState<VisualizationResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const chartTypes = [
-    { name: 'Bar Chart', icon: BarChart3 },
-    { name: 'Line Chart', icon: LineChart },
-    { name: 'Scatter Plot', icon: ScatterChart },
-    { name: 'Histogram', icon: BarChart3 },
-    { name: 'Box Plot', icon: Activity },
-    { name: 'Violin Plot', icon: Activity },
-    { name: 'Pie Chart', icon: PieChart },
-    { name: 'Area Chart', icon: AreaChart },
-    { name: 'Heatmap', icon: Layers },
-    { name: 'Treemap', icon: Layers },
-    { name: 'Sunburst', icon: PieChart },
-    { name: 'Bubble Chart', icon: ScatterChart },
-    { name: 'Funnel Chart', icon: BarChart3 },
-    { name: 'KPI Dashboard', icon: Activity },
+    { name: "Bar Chart", icon: BarChart3 },
+    { name: "Line Chart", icon: LineChart },
+    { name: "Scatter Plot", icon: ScatterChart },
+    { name: "Histogram", icon: BarChart3 },
+    { name: "Box Plot", icon: Activity },
+    { name: "Violin Plot", icon: Activity },
+    { name: "Pie Chart", icon: PieChart },
+    { name: "Area Chart", icon: AreaChart },
+    { name: "Heatmap", icon: Layers },
+    { name: "Treemap", icon: Layers },
+    { name: "Sunburst", icon: PieChart },
+    { name: "Bubble Chart", icon: ScatterChart },
+    { name: "Funnel Chart", icon: BarChart3 },
+    { name: "KPI Dashboard", icon: Activity },
   ];
 
   const columns = preview?.columns || [];
@@ -67,17 +68,22 @@ export const VisualizationsPage: React.FC = () => {
     }
   }, [preview]);
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (axisOverrides?: {
+    xAxis?: string;
+    yAxis?: string;
+  }) => {
     if (!hasDataset) return;
+    const selectedXAxis = axisOverrides?.xAxis ?? xAxis;
+    const selectedYAxis = axisOverrides?.yAxis ?? yAxis;
     setLoading(true);
     setError(null);
     try {
       const res = await visualizationApi.generateChart({
         chart_type: chartType,
-        x: xAxis || undefined,
-        y: yAxis || undefined,
-        color: colorCol === 'None' ? undefined : colorCol,
-        size: sizeCol === 'None' ? undefined : sizeCol,
+        x: selectedXAxis || undefined,
+        y: selectedYAxis || undefined,
+        color: colorCol === "None" ? undefined : colorCol,
+        size: sizeCol === "None" ? undefined : sizeCol,
         top_n: topN,
         nbins: nbins,
         hole: hole,
@@ -87,10 +93,10 @@ export const VisualizationsPage: React.FC = () => {
         title: title || undefined,
       });
       setChartResponse(res);
-      success('Chart Rendered', `Generated ${chartType} visualization.`);
+      success("Chart Rendered", `Generated ${chartType} visualization.`);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to render visualization.');
-      toastError('Render Error', err.response?.data?.detail);
+      setError(err.response?.data?.detail || "Failed to render visualization.");
+      toastError("Render Error", err.response?.data?.detail);
     } finally {
       setLoading(false);
     }
@@ -98,7 +104,11 @@ export const VisualizationsPage: React.FC = () => {
 
   useEffect(() => {
     if (hasDataset && columns.length > 0 && !chartResponse) {
-      handleGenerate();
+      const initialXAxis = xAxis || catCols[0] || columns[0];
+      const initialYAxis = yAxis || numericCols[0] || columns[1] || columns[0];
+      if (initialXAxis && initialYAxis) {
+        handleGenerate({ xAxis: initialXAxis, yAxis: initialYAxis });
+      }
     }
   }, [hasDataset, columns]);
 
@@ -110,7 +120,9 @@ export const VisualizationsPage: React.FC = () => {
     );
   }
 
-  const activeTitle = title || `${chartType}: ${yAxis ? `${yAxis} by ${xAxis}` : xAxis || 'Distribution'}`;
+  const activeTitle =
+    title ||
+    `${chartType}: ${yAxis ? `${yAxis} by ${xAxis}` : xAxis || "Distribution"}`;
 
   return (
     <div className="space-y-6">
@@ -121,7 +133,8 @@ export const VisualizationsPage: React.FC = () => {
           Interactive Visualizations Studio
         </h2>
         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Build and customize 14+ chart architectures with Plotly.js, drilldown filters, high-res exports, and dashboard pinning
+          Build and customize 14+ chart architectures with Plotly.js, drilldown
+          filters, high-res exports, and dashboard pinning
         </p>
       </div>
 
@@ -133,8 +146,8 @@ export const VisualizationsPage: React.FC = () => {
             onClick={() => setChartType(ct.name)}
             className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex-shrink-0 transition-all ${
               chartType === ct.name
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                : 'bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700'
+                ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                : "bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700"
             }`}
           >
             <ct.icon className="h-4 w-4" />
@@ -153,7 +166,9 @@ export const VisualizationsPage: React.FC = () => {
 
           <div className="space-y-3.5 text-xs sm:text-sm">
             <div>
-              <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">Custom Chart Title</label>
+              <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
+                Custom Chart Title
+              </label>
               <input
                 type="text"
                 placeholder={activeTitle}
@@ -164,9 +179,11 @@ export const VisualizationsPage: React.FC = () => {
             </div>
 
             {/* X-Axis / Primary Column */}
-            {!['Correlation Heatmap', 'KPI Dashboard'].includes(chartType) && (
+            {!["Correlation Heatmap", "KPI Dashboard"].includes(chartType) && (
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">X-Axis / Category</label>
+                <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
+                  X-Axis / Category
+                </label>
                 <select
                   value={xAxis}
                   onChange={(e) => setXAxis(e.target.value)}
@@ -184,15 +201,17 @@ export const VisualizationsPage: React.FC = () => {
 
             {/* Y-Axis / Metric Column */}
             {![
-              'Pie Chart',
-              'Histogram',
-              'Treemap',
-              'Sunburst',
-              'Heatmap',
-              'KPI Dashboard',
+              "Pie Chart",
+              "Histogram",
+              "Treemap",
+              "Sunburst",
+              "Heatmap",
+              "KPI Dashboard",
             ].includes(chartType) && (
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">Y-Axis / Metric</label>
+                <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
+                  Y-Axis / Metric
+                </label>
                 <select
                   value={yAxis}
                   onChange={(e) => setYAxis(e.target.value)}
@@ -209,9 +228,11 @@ export const VisualizationsPage: React.FC = () => {
             )}
 
             {/* Color / Grouping Column */}
-            {!['Histogram', 'Heatmap', 'KPI Dashboard'].includes(chartType) && (
+            {!["Histogram", "Heatmap", "KPI Dashboard"].includes(chartType) && (
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">Color / Segment Group</label>
+                <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
+                  Color / Segment Group
+                </label>
                 <select
                   value={colorCol}
                   onChange={(e) => setColorCol(e.target.value)}
@@ -227,9 +248,11 @@ export const VisualizationsPage: React.FC = () => {
               </div>
             )}
 
-            {['Scatter Plot', 'Bubble Chart'].includes(chartType) && (
+            {["Scatter Plot", "Bubble Chart"].includes(chartType) && (
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">Size Metric</label>
+                <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
+                  Size Metric
+                </label>
                 <select
                   value={sizeCol}
                   onChange={(e) => setSizeCol(e.target.value)}
@@ -246,7 +269,9 @@ export const VisualizationsPage: React.FC = () => {
             )}
 
             <div>
-              <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">Color Palette</label>
+              <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
+                Color Palette
+              </label>
               <select
                 value={colorscale}
                 onChange={(e) => setColorscale(e.target.value)}
@@ -261,12 +286,12 @@ export const VisualizationsPage: React.FC = () => {
             </div>
 
             <button
-              onClick={handleGenerate}
+              onClick={() => handleGenerate()}
               disabled={loading}
               className="w-full mt-4 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md shadow-blue-600/20 transition-all"
             >
               <Play className="h-4 w-4" />
-              {loading ? 'Rendering...' : 'Render / Refresh Chart'}
+              {loading ? "Rendering..." : "Render / Refresh Chart"}
             </button>
           </div>
         </div>

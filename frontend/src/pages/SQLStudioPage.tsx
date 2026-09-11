@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from "react";
 import {
   Terminal,
   Play,
@@ -9,38 +9,44 @@ import {
   CheckCircle2,
   Copy,
   BookOpen,
-} from 'lucide-react';
-import { useDataset } from '../context/DatasetContext';
-import { queryApi } from '../api/client';
-import { SQLQueryResponse } from '../types';
-import { DataTable } from '../components/DataTable';
-import { useToast } from '../components/Toast';
+} from "lucide-react";
+import { useDataset } from "../context/DatasetContext";
+import { queryApi } from "../api/client";
+import { SQLQueryResponse } from "../types";
+import { DataTable } from "../components/DataTable";
+import { useToast } from "../components/Toast";
 
 export const SQLStudioPage: React.FC = () => {
   const { preview, hasDataset, activeDataset } = useDataset();
   const { success, error: toastError } = useToast();
 
-  const [query, setQuery] = useState('SELECT * FROM df LIMIT 25;');
+  const [query, setQuery] = useState("SELECT * FROM df LIMIT 25;");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SQLQueryResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const autoRunStarted = useRef(false);
 
   const columns = preview?.columns || [];
 
   const snippets = [
-    { label: 'Sample 20 Rows', sql: 'SELECT * FROM df LIMIT 20;' },
-    { label: 'Count & Summary', sql: 'SELECT COUNT(*) as total_records FROM df;' },
+    { label: "Sample 20 Rows", sql: "SELECT * FROM df LIMIT 20;" },
     {
-      label: 'Group By Aggregation',
-      sql: columns.length >= 2
-        ? `SELECT ${columns[0]}, COUNT(*) as count FROM df GROUP BY ${columns[0]} ORDER BY count DESC LIMIT 10;`
-        : 'SELECT * FROM df LIMIT 10;',
+      label: "Count & Summary",
+      sql: "SELECT COUNT(*) as total_records FROM df;",
     },
     {
-      label: 'Numeric Stats',
-      sql: preview?.numeric_cols && preview.numeric_cols.length > 0
-        ? `SELECT AVG(${preview.numeric_cols[0]}) as avg_val, MIN(${preview.numeric_cols[0]}) as min_val, MAX(${preview.numeric_cols[0]}) as max_val FROM df;`
-        : 'SELECT * FROM df LIMIT 10;',
+      label: "Group By Aggregation",
+      sql:
+        columns.length >= 2
+          ? `SELECT ${columns[0]}, COUNT(*) as count FROM df GROUP BY ${columns[0]} ORDER BY count DESC LIMIT 10;`
+          : "SELECT * FROM df LIMIT 10;",
+    },
+    {
+      label: "Numeric Stats",
+      sql:
+        preview?.numeric_cols && preview.numeric_cols.length > 0
+          ? `SELECT AVG(${preview.numeric_cols[0]}) as avg_val, MIN(${preview.numeric_cols[0]}) as min_val, MAX(${preview.numeric_cols[0]}) as max_val FROM df;`
+          : "SELECT * FROM df LIMIT 10;",
     },
   ];
 
@@ -52,21 +58,25 @@ export const SQLStudioPage: React.FC = () => {
       const res = await queryApi.runSQL({ query, limit: 500 });
       if (res.success) {
         setResult(res);
-        success('Query Executed', `Returned ${res.total_rows} rows in ${res.execution_time}ms`);
+        success(
+          "Query Executed",
+          `Returned ${res.total_rows} rows in ${res.execution_time}ms`,
+        );
       } else {
-        setError(res.error || 'SQL Execution failed.');
-        toastError('SQL Error', res.error || 'Syntax or validation error.');
+        setError(res.error || "SQL Execution failed.");
+        toastError("SQL Error", res.error || "Syntax or validation error.");
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to execute query.');
-      toastError('Execution Error', err.response?.data?.detail);
+      setError(err.response?.data?.detail || "Failed to execute query.");
+      toastError("Execution Error", err.response?.data?.detail);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (hasDataset && !result) {
+    if (hasDataset && !result && !autoRunStarted.current) {
+      autoRunStarted.current = true;
       handleRunSQL();
     }
   }, [hasDataset]);
@@ -88,7 +98,15 @@ export const SQLStudioPage: React.FC = () => {
           In-Memory SQL Studio
         </h2>
         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Execute fast, interactive SQL queries directly over <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">df</span> / <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">data</span> table in memory
+          Execute fast, interactive SQL queries directly over{" "}
+          <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+            df
+          </span>{" "}
+          /{" "}
+          <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+            data
+          </span>{" "}
+          table in memory
         </p>
       </div>
 
@@ -128,7 +146,8 @@ export const SQLStudioPage: React.FC = () => {
             {/* Run Button & Status */}
             <div className="flex items-center justify-between pt-1">
               <span className="text-xs text-slate-400 font-mono">
-                Dataset table name: <code className="text-emerald-500 font-bold">df</code>
+                Dataset table name:{" "}
+                <code className="text-emerald-500 font-bold">df</code>
               </span>
 
               <button
@@ -137,7 +156,7 @@ export const SQLStudioPage: React.FC = () => {
                 className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs sm:text-sm font-bold shadow-md shadow-emerald-600/20 transition-all"
               >
                 <Play className="h-4 w-4" />
-                {loading ? 'Running Query...' : 'Run SQL Query'}
+                {loading ? "Running Query..." : "Run SQL Query"}
               </button>
             </div>
           </div>
@@ -167,7 +186,7 @@ export const SQLStudioPage: React.FC = () => {
                     {col}
                   </span>
                   <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400">
-                    {isNum ? 'num' : isDate ? 'date' : 'str'}
+                    {isNum ? "num" : isDate ? "date" : "str"}
                   </span>
                 </button>
               );
@@ -199,14 +218,22 @@ export const SQLStudioPage: React.FC = () => {
                   {result.execution_time} ms
                 </span>
                 <span>•</span>
-                <span className="font-mono">{result.total_rows.toLocaleString()} total rows</span>
+                <span className="font-mono">
+                  {result.total_rows.toLocaleString()} total rows
+                </span>
                 <span>•</span>
-                <span className="font-mono">{result.columns.length} columns</span>
+                <span className="font-mono">
+                  {result.columns.length} columns
+                </span>
               </p>
             </div>
           </div>
 
-          <DataTable data={result.rows} columns={result.columns} pageSize={10} />
+          <DataTable
+            data={result.rows}
+            columns={result.columns}
+            pageSize={10}
+          />
         </div>
       )}
     </div>
