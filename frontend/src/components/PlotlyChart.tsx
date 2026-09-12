@@ -64,11 +64,19 @@ export const PlotlyChart: React.FC<PlotlyChartProps> = ({
       ...(spec.config || {}),
     };
 
-    Plotly.newPlot(containerRef.current, data, layout, config);
+    try {
+      Plotly.newPlot(containerRef.current, data, layout, config);
+    } catch (err) {
+      console.error("Plotly.newPlot error:", err);
+    }
 
     const handleResize = () => {
-      if (containerRef.current) {
-        Plotly.Plots.resize(containerRef.current);
+      try {
+        if (containerRef.current) {
+          Plotly.Plots.resize(containerRef.current);
+        }
+      } catch (err) {
+        console.error("Plotly resize error:", err);
       }
     };
 
@@ -76,11 +84,15 @@ export const PlotlyChart: React.FC<PlotlyChartProps> = ({
 
     return () => {
       window.removeEventListener("resize", handleResize);
-      if (containerRef.current) {
-        Plotly.purge(containerRef.current);
+      try {
+        if (containerRef.current) {
+          Plotly.purge(containerRef.current);
+        }
+      } catch (err) {
+        console.error("Plotly purge error:", err);
       }
     };
-  }, [spec, title]);
+  }, [spec, title, showActions]);
 
   // Fullscreen plot effect
   useEffect(() => {
@@ -100,14 +112,22 @@ export const PlotlyChart: React.FC<PlotlyChartProps> = ({
       ...(spec.layout || {}),
     };
 
-    Plotly.newPlot(fullscreenRef.current, spec.data || [], layout, {
-      responsive: true,
-      displaylogo: false,
-    });
+    try {
+      Plotly.newPlot(fullscreenRef.current, spec.data || [], layout, {
+        responsive: true,
+        displaylogo: false,
+      });
+    } catch (err) {
+      console.error("Plotly fullscreen newPlot error:", err);
+    }
 
     return () => {
-      if (fullscreenRef.current) {
-        Plotly.purge(fullscreenRef.current);
+      try {
+        if (fullscreenRef.current) {
+          Plotly.purge(fullscreenRef.current);
+        }
+      } catch (err) {
+        console.error("Plotly fullscreen purge error:", err);
       }
     };
   }, [isFullscreen, spec]);
@@ -130,15 +150,28 @@ export const PlotlyChart: React.FC<PlotlyChartProps> = ({
   };
 
   const handleExportPNG = () => {
-    if (!containerRef.current) return;
-    Plotly.downloadImage(containerRef.current, {
-      format: "png",
-      filename: `${title.toLowerCase().replace(/\s+/g, "_")}`,
-      width: 1200,
-      height: 700,
-      scale: 2,
-    });
-    success("Exporting Image", "High-res chart download started.");
+    try {
+      if (!containerRef.current) return;
+      const plotEl =
+        (containerRef.current.querySelector(".js-plotly-plot") as any) ||
+        containerRef.current;
+      const p = (Plotly as any)?.downloadImage
+        ? Plotly
+        : (window as any).Plotly;
+      if (p?.downloadImage) {
+        p.downloadImage(plotEl, {
+          format: "png",
+          filename: `${title.toLowerCase().replace(/\s+/g, "_")}`,
+          width: 1200,
+          height: 700,
+          scale: 2,
+        });
+        success("Exporting Image", "High-res chart download started.");
+      }
+    } catch (err) {
+      console.error("Plotly export PNG error:", err);
+      error("Export Failed", "Could not export chart image.");
+    }
   };
 
   if (!spec) {

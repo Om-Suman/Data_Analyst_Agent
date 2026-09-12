@@ -36,6 +36,7 @@ export const DashboardPage: React.FC = () => {
   const {
     activeDataset,
     preview,
+    loading,
     previewLoading,
     hasDataset,
     pinnedCharts,
@@ -49,19 +50,26 @@ export const DashboardPage: React.FC = () => {
   const schemaChartRef = useRef<HTMLDivElement>(null);
 
   const handleDownloadSchemaChart = () => {
-    if (schemaChartRef.current) {
-      const plotEl = schemaChartRef.current.querySelector(
-        ".js-plotly-plot",
-      ) as any;
-      if (plotEl) {
-        Plotly.downloadImage(plotEl, {
-          format: "png",
-          filename: `${activeDataset?.name || "dataset"}_schema_breakdown`,
-          width: 900,
-          height: 600,
-          scale: 2,
-        });
+    try {
+      if (schemaChartRef.current) {
+        const plotEl = schemaChartRef.current.querySelector(
+          ".js-plotly-plot",
+        ) as any;
+        const p = (Plotly as any)?.downloadImage
+          ? Plotly
+          : (window as any).Plotly;
+        if (plotEl && p?.downloadImage) {
+          p.downloadImage(plotEl, {
+            format: "png",
+            filename: `${activeDataset?.name || "dataset"}_schema_breakdown`,
+            width: 900,
+            height: 600,
+            scale: 2,
+          });
+        }
       }
+    } catch (err) {
+      console.error("Failed to download schema chart", err);
     }
   };
 
@@ -84,6 +92,30 @@ export const DashboardPage: React.FC = () => {
       setLoadingSample(null);
     }
   };
+
+  // Filter preview data by search query — MUST be before any early returns (React hooks rules)
+  const filteredPreviewData = useMemo(() => {
+    if (!preview?.data) return [];
+    if (!searchQuery.trim()) return preview.data;
+    const q = searchQuery.toLowerCase();
+    return preview.data.filter((row) =>
+      Object.values(row).some((val) => String(val).toLowerCase().includes(q)),
+    );
+  }, [preview?.data, searchQuery]);
+
+  // Loading state while active dataset is being fetched on initial page load / refresh
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4 py-12 space-y-4">
+        <div className="h-14 w-14 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-lg shadow-blue-500/5">
+          <RefreshCw className="h-7 w-7 animate-spin text-blue-600 dark:text-blue-400" />
+        </div>
+        <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">
+          Initializing workspace and datasets...
+        </p>
+      </div>
+    );
+  }
 
   // Empty State when no dataset is loaded
   if (!hasDataset) {
@@ -228,25 +260,18 @@ export const DashboardPage: React.FC = () => {
   const dateCount = preview?.date_cols?.length || 0;
   const otherCount = Math.max(0, totalCols - numCount - catCount - dateCount);
 
-  // Filter preview data by search query
-  const filteredPreviewData = useMemo(() => {
-    if (!preview?.data) return [];
-    if (!searchQuery.trim()) return preview.data;
-    const q = searchQuery.toLowerCase();
-    return preview.data.filter((row) =>
-      Object.values(row).some((val) => String(val).toLowerCase().includes(q)),
-    );
-  }, [preview?.data, searchQuery]);
+  const pieValues = [numCount, catCount, dateCount, otherCount].filter(
+    (v) => v > 0,
+  );
+  const pieLabels = ["Numeric", "Categorical", "Date/Time", "Other"].filter(
+    (_, i) => [numCount, catCount, dateCount, otherCount][i] > 0,
+  );
 
   const dtypePieSpec = {
     data: [
       {
-        values: [numCount, catCount, dateCount, otherCount].filter(
-          (v) => v > 0,
-        ),
-        labels: ["Numeric", "Categorical", "Date/Time", "Other"].filter(
-          (_, i) => [numCount, catCount, dateCount, otherCount][i] > 0,
-        ),
+        values: pieValues.length > 0 ? pieValues : [1],
+        labels: pieLabels.length > 0 ? pieLabels : ["No Columns"],
         type: "pie",
         hole: 0.6,
         marker: { colors: ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"] },
@@ -415,11 +440,18 @@ export const DashboardPage: React.FC = () => {
               </div>
 
               <div ref={schemaChartRef} className="mt-1">
-                <PlotlyChart
-                  spec={dtypePieSpec}
-                  height={190}
-                  showActions={false}
-                />
+                {pieValues.length > 0 ? (
+                  <PlotlyChart
+                    spec={dtypePieSpec}
+                    height={190}
+                    showActions={false}
+                  />
+                ) : (
+                  <div className="h-[190px] flex items-center justify-center text-xs text-slate-400">
+                    <RefreshCw className="h-4 w-4 animate-spin mr-2 text-blue-500" />
+                    Loading schema breakdown...
+                  </div>
+                )}
               </div>
 
               {/* Detailed Column Classification Badges */}
@@ -884,10 +916,10 @@ export const DashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {previewLoading ? (
+        {previewLoading || !preview ? (
           <div className="h-40 flex items-center justify-center text-slate-500 text-xs">
             <RefreshCw className="h-4 w-4 animate-spin mr-2 text-blue-500" />
-            Loading preview...
+            Loading preview data...
           </div>
         ) : (
           <div className="overflow-x-auto">
