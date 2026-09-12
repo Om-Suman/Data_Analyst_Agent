@@ -137,3 +137,41 @@
   background-size: 200% 100%;
   animation: shimmer 1.6s infinite ease-in-out;
 }
+
+/* Modern styling for Plotly modebar */
+.js-plotly-plot .plotly .modebar {
+  background: transparent !important;
+  right: 6px !important;
+  top: 6px !important;
+}
+
+.js-plotly-plot .plotly .modebar-container {
+  background: transparent !important;
+}
+
+.js-plotly-plot .plotly .modebar-group {
+  background: rgba(15, 23, 42, 0.8) !important;
+  backdrop-filter: blur(8px) !important;
+  border-radius: 8px !important;
+  padding: 2px !important;
+  border: 1px solid rgba(148, 163, 184, 0.2) !important;
+}
+
+.js-plotly-plot .plotly .modebar-btn {
+  background: transparent !important;
+  padding: 4px !important;
+  border-radius: 6px !important;
+}
+
+.js-plotly-plot .plotly .modebar-btn:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
+.js-plotly-plot .plotly .modebar-btn svg path {
+  fill: #94a3b8 !important;
+}
+
+.js-plotly-plot .plotly .modebar-btn:hover svg path {
+  fill: #3b82f6 !important;
+}
+

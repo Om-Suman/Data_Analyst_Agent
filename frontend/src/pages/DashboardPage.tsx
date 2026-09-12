@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
+import Plotly from "plotly.js-dist-min";
 import {
   Database,
   Columns,
@@ -45,6 +46,24 @@ export const DashboardPage: React.FC = () => {
   const [history, setHistory] = useState<QueryHistoryItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loadingSample, setLoadingSample] = useState<string | null>(null);
+  const schemaChartRef = useRef<HTMLDivElement>(null);
+
+  const handleDownloadSchemaChart = () => {
+    if (schemaChartRef.current) {
+      const plotEl = schemaChartRef.current.querySelector(
+        ".js-plotly-plot",
+      ) as any;
+      if (plotEl) {
+        Plotly.downloadImage(plotEl, {
+          format: "png",
+          filename: `${activeDataset?.name || "dataset"}_schema_breakdown`,
+          width: 900,
+          height: 600,
+          scale: 2,
+        });
+      }
+    }
+  };
 
   useEffect(() => {
     queryApi
@@ -264,7 +283,7 @@ export const DashboardPage: React.FC = () => {
           </h1>
 
           <div className="flex flex-wrap items-center gap-2 mt-3 text-xs">
-            <span className="rounded-lg bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10 px-2.5 py-1 text-slate-700 dark:text-slate-200 font-medium">
+            <span className="rounded-lg bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 px-2.5 py-1 text-slate-700 dark:text-slate-300 font-medium">
               Source:{" "}
               <span className="font-mono text-slate-900 dark:text-white font-bold">
                 {activeDataset?.source}
@@ -380,12 +399,22 @@ export const DashboardPage: React.FC = () => {
                   <BarChart2 className="h-4 w-4 text-blue-500" />
                   Schema Breakdown
                 </h3>
-                <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                  {totalCols} Columns
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                    {totalCols} Columns
+                  </span>
+                  <button
+                    onClick={handleDownloadSchemaChart}
+                    title="Download Schema Breakdown PNG"
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/90 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-slate-200 dark:border-slate-700/80 text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 text-xs font-bold transition-all shadow-sm group"
+                  >
+                    <Download className="h-3 w-3 text-blue-500 group-hover:scale-110 transition-transform" />
+                    PNG
+                  </button>
+                </div>
               </div>
 
-              <div className="mt-1">
+              <div ref={schemaChartRef} className="mt-1">
                 <PlotlyChart
                   spec={dtypePieSpec}
                   height={190}

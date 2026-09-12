@@ -1,8 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
-import Plotly from 'plotly.js-dist-min';
-import { Maximize2, Minimize2, Pin, Download, Check } from 'lucide-react';
-import { useDataset } from '../context/DatasetContext';
-import { useToast } from './Toast';
+import React, { useEffect, useRef, useState } from "react";
+import Plotly from "plotly.js-dist-min";
+import { Maximize2, Minimize2, Pin, Download, Check } from "lucide-react";
+import { useDataset } from "../context/DatasetContext";
+import { useToast } from "./Toast";
 
 interface PlotlyChartProps {
   spec: any;
@@ -16,11 +16,11 @@ interface PlotlyChartProps {
 
 export const PlotlyChart: React.FC<PlotlyChartProps> = ({
   spec,
-  className = '',
+  className = "",
   height = 450,
-  title = 'Analytics Chart',
-  chartType = 'Chart',
-  sourcePage = 'Visualizations',
+  title = "Analytics Chart",
+  chartType = "Chart",
+  sourcePage = "Visualizations",
   showActions = true,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -35,13 +35,13 @@ export const PlotlyChart: React.FC<PlotlyChartProps> = ({
     if (!containerRef.current || !spec) return;
 
     const data = spec.data || [];
-    const isDark = document.documentElement.classList.contains('dark');
+    const isDark = document.documentElement.classList.contains("dark");
     const layout = {
-      paper_bgcolor: 'transparent',
-      plot_bgcolor: 'transparent',
+      paper_bgcolor: "transparent",
+      plot_bgcolor: "transparent",
       font: {
-        color: isDark ? '#94a3b8' : '#475569',
-        family: 'Inter, system-ui, sans-serif',
+        color: isDark ? "#94a3b8" : "#475569",
+        family: "Inter, system-ui, sans-serif",
         size: 13,
       },
       margin: { l: 45, r: 25, t: 45, b: 45 },
@@ -51,12 +51,12 @@ export const PlotlyChart: React.FC<PlotlyChartProps> = ({
 
     const config = {
       responsive: true,
-      displayModeBar: true,
+      displayModeBar: showActions ? "hover" : false,
       displaylogo: false,
-      modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+      modeBarButtonsToRemove: ["lasso2d", "select2d"],
       toImageButtonOptions: {
-        format: 'png',
-        filename: `${title.toLowerCase().replace(/\s+/g, '_')}`,
+        format: "png",
+        filename: `${title.toLowerCase().replace(/\s+/g, "_")}`,
         height: 700,
         width: 1200,
         scale: 2,
@@ -72,10 +72,10 @@ export const PlotlyChart: React.FC<PlotlyChartProps> = ({
       }
     };
 
-    window.addEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
 
     return () => {
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener("resize", handleResize);
       if (containerRef.current) {
         Plotly.purge(containerRef.current);
       }
@@ -86,13 +86,13 @@ export const PlotlyChart: React.FC<PlotlyChartProps> = ({
   useEffect(() => {
     if (!isFullscreen || !fullscreenRef.current || !spec) return;
 
-    const isDark = document.documentElement.classList.contains('dark');
+    const isDark = document.documentElement.classList.contains("dark");
     const layout = {
-      paper_bgcolor: isDark ? '#0f172a' : '#ffffff',
-      plot_bgcolor: 'transparent',
+      paper_bgcolor: isDark ? "#0f172a" : "#ffffff",
+      plot_bgcolor: "transparent",
       font: {
-        color: isDark ? '#cbd5e1' : '#1e293b',
-        family: 'Inter, system-ui, sans-serif',
+        color: isDark ? "#cbd5e1" : "#1e293b",
+        family: "Inter, system-ui, sans-serif",
         size: 14,
       },
       margin: { l: 60, r: 40, t: 60, b: 60 },
@@ -100,7 +100,10 @@ export const PlotlyChart: React.FC<PlotlyChartProps> = ({
       ...(spec.layout || {}),
     };
 
-    Plotly.newPlot(fullscreenRef.current, spec.data || [], layout, { responsive: true, displaylogo: false });
+    Plotly.newPlot(fullscreenRef.current, spec.data || [], layout, {
+      responsive: true,
+      displaylogo: false,
+    });
 
     return () => {
       if (fullscreenRef.current) {
@@ -113,29 +116,29 @@ export const PlotlyChart: React.FC<PlotlyChartProps> = ({
     if (!spec) return;
     try {
       await pinChart({
-        title: title || 'Custom Chart',
+        title: title || "Custom Chart",
         chart_type: chartType,
         figure_spec: spec,
         source_page: sourcePage,
       });
       setPinned(true);
-      success('Chart Pinned', 'Saved to your Custom BI Dashboard.');
+      success("Chart Pinned", "Saved to your Custom BI Dashboard.");
       setTimeout(() => setPinned(false), 3000);
     } catch (err: any) {
-      error('Pin Failed', err.message || 'Could not pin chart.');
+      error("Pin Failed", err.message || "Could not pin chart.");
     }
   };
 
   const handleExportPNG = () => {
     if (!containerRef.current) return;
     Plotly.downloadImage(containerRef.current, {
-      format: 'png',
-      filename: `${title.toLowerCase().replace(/\s+/g, '_')}`,
+      format: "png",
+      filename: `${title.toLowerCase().replace(/\s+/g, "_")}`,
       width: 1200,
       height: 700,
       scale: 2,
     });
-    success('Exporting Image', 'High-res chart download started.');
+    success("Exporting Image", "High-res chart download started.");
   };
 
   if (!spec) {
@@ -159,7 +162,11 @@ export const PlotlyChart: React.FC<PlotlyChartProps> = ({
             title="Pin to Custom Dashboard"
             className="p-1.5 rounded-md text-slate-400 hover:text-amber-300 hover:bg-slate-800 transition-colors"
           >
-            {pinned ? <Check className="h-4 w-4 text-emerald-400" /> : <Pin className="h-4 w-4" />}
+            {pinned ? (
+              <Check className="h-4 w-4 text-emerald-400" />
+            ) : (
+              <Pin className="h-4 w-4" />
+            )}
           </button>
           <button
             onClick={handleExportPNG}
@@ -179,7 +186,7 @@ export const PlotlyChart: React.FC<PlotlyChartProps> = ({
       )}
 
       {/* Chart Canvas */}
-      <div ref={containerRef} style={{ height, width: '100%' }} />
+      <div ref={containerRef} style={{ height, width: "100%" }} />
 
       {/* Fullscreen Expansion Modal */}
       {isFullscreen && (
@@ -187,7 +194,9 @@ export const PlotlyChart: React.FC<PlotlyChartProps> = ({
           <div className="flex items-center justify-between pb-4 border-b border-slate-800">
             <div>
               <h3 className="text-lg font-bold text-white">{title}</h3>
-              <p className="text-xs text-slate-400">{chartType} • Source: {sourcePage}</p>
+              <p className="text-xs text-slate-400">
+                {chartType} • Source: {sourcePage}
+              </p>
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -195,7 +204,7 @@ export const PlotlyChart: React.FC<PlotlyChartProps> = ({
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold"
               >
                 <Pin className="h-4 w-4" />
-                {pinned ? 'Pinned!' : 'Pin to Dashboard'}
+                {pinned ? "Pinned!" : "Pin to Dashboard"}
               </button>
               <button
                 onClick={() => setIsFullscreen(false)}
