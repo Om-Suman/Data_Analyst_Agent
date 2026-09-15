@@ -31,7 +31,7 @@ def infer_dtypes(df: pd.DataFrame) -> pd.DataFrame:
                 pass
             # Try datetime
             try:
-                converted = pd.to_datetime(df[col], errors="coerce", infer_datetime_format=True)
+                converted = pd.to_datetime(df[col], errors="coerce")
                 if converted.notna().sum() / max(len(df), 1) > 0.8:
                     df[col] = converted
                     continue
@@ -129,7 +129,7 @@ def load_sqlite(file) -> dict[str, pd.DataFrame]:
         tables = pd.read_sql("SELECT name FROM sqlite_master WHERE type='table'", conn)
         result = {}
         for table in tables["name"]:
-            result[table] = pd.read_sql(f"SELECT * FROM {table}", conn)
+            result[table] = pd.read_sql(f"SELECT * FROM [{table}]", conn)
         conn.close()
     finally:
         os.unlink(tmp_path)

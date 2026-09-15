@@ -239,6 +239,7 @@ def execute_sql_query(session: SessionState, query: str, limit: int = 500) -> di
             }
 
     start_time = time.time()
+    conn = None
     try:
         conn = sqlite3.connect(":memory:")
         # Register dataset under 'df' and 'data' and the dataset name sanitized
@@ -250,7 +251,6 @@ def execute_sql_query(session: SessionState, query: str, limit: int = 500) -> di
                 df.to_sql(safe_name, conn, index=False, if_exists="replace")
 
         result_df = pd.read_sql_query(q_clean, conn)
-        conn.close()
         exec_ms = round((time.time() - start_time) * 1000, 2)
 
         total_rows = len(result_df)
@@ -278,3 +278,6 @@ def execute_sql_query(session: SessionState, query: str, limit: int = 500) -> di
             "execution_time": exec_ms,
             "error": str(e),
         }
+    finally:
+        if conn is not None:
+            conn.close()

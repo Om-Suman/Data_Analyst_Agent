@@ -133,7 +133,11 @@ def fill_missing(df: pd.DataFrame, strategy: str, custom_value=None, columns=Non
 
 def detect_outliers_zscore(df: pd.DataFrame, threshold: float = 3.0) -> pd.Series:
     numeric = df.select_dtypes(include=np.number)
-    z = np.abs((numeric - numeric.mean()) / numeric.std(ddof=0))
+    stds = numeric.std(ddof=0)
+    # Constant columns have std=0; replacing with inf gives z=0 (no outliers)
+    # instead of z=inf (every row flagged as outlier and dropped).
+    stds = stds.replace(0, np.inf)
+    z = np.abs((numeric - numeric.mean()) / stds)
     return (z > threshold).any(axis=1)
 
 
@@ -178,7 +182,7 @@ def clean_dataframe(df: pd.DataFrame, config: CleaningConfig) -> tuple[pd.DataFr
                     pass
                 # Try datetime
                 try:
-                    conv = pd.to_datetime(df[col], errors="coerce", infer_datetime_format=True)
+                    conv = pd.to_datetime(df[col], errors="coerce")
                     if conv.notna().sum() / max(len(df), 1) > 0.9:
                         original = df[col].dtype
                         df[col] = conv

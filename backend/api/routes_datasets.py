@@ -57,10 +57,11 @@ async def upload_files(
     for file in files:
         try:
             content = await file.read()
-            res = process_and_register_file(session, file.filename, content)
+            filename = file.filename or "untitled"
+            res = process_and_register_file(session, filename, content)
             results.append(res)
         except Exception as exc:
-            errors.append({"filename": file.filename, "error": str(exc)})
+            errors.append({"filename": file.filename or "unknown", "error": str(exc)})
 
     if not results and errors:
         raise HTTPException(
