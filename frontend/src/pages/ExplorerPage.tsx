@@ -55,10 +55,13 @@ export const ExplorerPage: React.FC = () => {
   const [loadingProfile, setLoadingProfile] = useState(false);
 
   useEffect(() => {
-    if (preview?.columns) {
-      if (!distCol && preview.columns.length > 0)
+    if (preview?.columns && preview.columns.length > 0) {
+      // Reset column selections when switching datasets — the previously
+      // selected column may not exist in the new dataset, which would
+      // cause a 400 error from the API.
+      if (!distCol || !preview.columns.includes(distCol))
         setDistCol(preview.columns[0]);
-      if (!profileCol && preview.columns.length > 0)
+      if (!profileCol || !preview.columns.includes(profileCol))
         setProfileCol(preview.columns[0]);
     }
   }, [preview]);

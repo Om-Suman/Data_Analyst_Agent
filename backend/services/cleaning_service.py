@@ -112,10 +112,11 @@ def apply_cleaning(
 
     cleaned_df, report, report_data = execute_cleaning_dry_run(session, config_dict)
 
-    session.save_version(name, f"Cleaned ({config_dict.get('missing_strategy', 'default')})")
-    session.datasets[name]["df"] = cleaned_df
-    session.datasets[name]["rows"] = int(len(cleaned_df))
-    session.datasets[name]["cols"] = int(len(cleaned_df.columns))
+    # update_dataset atomically replaces the df, increments the version,
+    # and snapshots the NEW (cleaned) state — avoiding the previous bug
+    # where save_version was called before the df was replaced, causing
+    # the OLD (pre-clean) df to be snapshotted under the "Cleaned" label.
+    session.update_dataset(name, cleaned_df, description=f"Cleaned ({config_dict.get('missing_strategy', 'default')})")
     session.cleaning_log.append({
         "dataset": name,
         "config": config_dict,
@@ -231,14 +232,14 @@ def transform_column(session: SessionState, req: dict[str, Any]) -> dict[str, An
     elif op in ("math_expr", "create_column"):
         if not expr or not expr.strip():
             raise ValueError("Expression is required.")
-        # Safe evaluation in isolated namespace with pandas Series
-        safe_dict = {c: df_copy[c] for c in df_copy.columns}
-        safe_dict["np"] = np
-        safe_dict["pd"] = pd
         # Target column is col if specified, or new_name
         dest_col = col if (col and op == "math_expr") else (new_name or col or "new_col")
         try:
-            result_series = eval(expr, {"__builtins__": {}}, safe_dict)
+            # Use pd.eval() which only permits arithmetic, comparisons, and
+            # boolean operators on column names — no attribute access, no
+            # function calls, no class introspection.  This is safe against
+            # sandbox-escape attacks like ().__class__.__bases__[0].__subclasses__().
+            result_series = pd.eval(expr, local_dict={"df": df_copy}, engine="python")
             df_copy[dest_col] = result_series
             msg = f"Evaluated expression '{expr}' into column '{dest_col}'"
         except Exception as e:
