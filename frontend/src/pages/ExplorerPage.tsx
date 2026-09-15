@@ -387,7 +387,7 @@ export const ExplorerPage: React.FC = () => {
 
       {/* Tab 4: Column Profiler */}
       {activeTab === "profiler" && (
-        <div className="space-y-6">
+        <div className="space-y-6 min-h-[600px]">
           <div className="flex items-center gap-3 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 shadow-sm">
             <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">
               Select Column to Profile:
@@ -406,42 +406,45 @@ export const ExplorerPage: React.FC = () => {
           </div>
 
           {loadingProfile ? (
-            <div className="h-40 flex items-center justify-center text-xs text-slate-500 dark:text-slate-400">
-              Calculating profile statistics...
+            <div className="min-h-[500px] flex items-center justify-center text-xs text-slate-500 dark:text-slate-400">
+              <div className="flex flex-col items-center gap-3">
+                <div className="h-8 w-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+                Calculating profile statistics...
+              </div>
             </div>
           ) : profileData ? (
-            <div className="space-y-6">
+            <div className="space-y-6 overflow-hidden">
               {/* Summary Stats Cards */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 shadow-sm">
+                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 shadow-sm min-h-[88px]">
                   <span className="text-slate-500 dark:text-slate-400">
                     Data Type
                   </span>
-                  <p className="text-lg font-bold text-blue-600 dark:text-blue-400 font-mono mt-1">
+                  <p className="text-lg font-bold text-blue-600 dark:text-blue-400 font-mono mt-1 truncate">
                     {profileData.dtype}
                   </p>
                 </div>
-                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 shadow-sm">
+                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 shadow-sm min-h-[88px]">
                   <span className="text-slate-500 dark:text-slate-400">
                     Unique Values
                   </span>
-                  <p className="text-lg font-bold text-slate-900 dark:text-white font-mono mt-1">
+                  <p className="text-lg font-bold text-slate-900 dark:text-white font-mono mt-1 truncate">
                     {profileData.unique_count.toLocaleString()}
                   </p>
                 </div>
-                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 shadow-sm">
+                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 shadow-sm min-h-[88px]">
                   <span className="text-slate-500 dark:text-slate-400">
                     Missing Values
                   </span>
-                  <p className="text-lg font-bold text-amber-600 dark:text-amber-400 font-mono mt-1">
+                  <p className="text-lg font-bold text-amber-600 dark:text-amber-400 font-mono mt-1 truncate">
                     {profileData.missing_count} ({profileData.missing_pct}%)
                   </p>
                 </div>
-                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 shadow-sm">
+                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 shadow-sm min-h-[88px]">
                   <span className="text-slate-500 dark:text-slate-400">
                     Category Type
                   </span>
-                  <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-1">
+                  <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-1 truncate">
                     {profileData.is_numeric
                       ? "Numeric Metric"
                       : "Categorical Dimension"}
@@ -449,48 +452,48 @@ export const ExplorerPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Numeric Deep Stats */}
-              {profileData.numeric_stats && (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
-                    <span className="text-slate-500 dark:text-slate-400">
-                      Mean ± Std
-                    </span>
-                    <p className="text-sm font-bold text-slate-900 dark:text-white font-mono mt-1">
-                      {profileData.numeric_stats.mean} ±{" "}
-                      {profileData.numeric_stats.std}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
-                    <span className="text-slate-500 dark:text-slate-400">
-                      Min / Max Range
-                    </span>
-                    <p className="text-sm font-bold text-slate-900 dark:text-white font-mono mt-1">
-                      [{profileData.numeric_stats.min},{" "}
-                      {profileData.numeric_stats.max}]
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
-                    <span className="text-slate-500 dark:text-slate-400">
-                      Median
-                    </span>
-                    <p className="text-sm font-bold text-slate-900 dark:text-white font-mono mt-1">
-                      {profileData.numeric_stats.median}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
-                    <span className="text-slate-500 dark:text-slate-400">
-                      Skewness
-                    </span>
-                    <p className="text-sm font-bold text-slate-900 dark:text-white font-mono mt-1">
-                      {profileData.numeric_stats.skew}
-                    </p>
-                  </div>
+              {/* Numeric Deep Stats — always reserve space to prevent layout shift */}
+              <div
+                className={`grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs transition-all duration-200 ${profileData.numeric_stats ? "opacity-100" : "opacity-0 h-0 overflow-hidden !gap-0 !m-0"}`}
+              >
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 min-h-[68px]">
+                  <span className="text-slate-500 dark:text-slate-400">
+                    Mean ± Std
+                  </span>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white font-mono mt-1 truncate">
+                    {profileData.numeric_stats?.mean ?? "—"} ±{" "}
+                    {profileData.numeric_stats?.std ?? "—"}
+                  </p>
                 </div>
-              )}
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 min-h-[68px]">
+                  <span className="text-slate-500 dark:text-slate-400">
+                    Min / Max Range
+                  </span>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white font-mono mt-1 truncate">
+                    [{profileData.numeric_stats?.min ?? "—"},{" "}
+                    {profileData.numeric_stats?.max ?? "—"}]
+                  </p>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 min-h-[68px]">
+                  <span className="text-slate-500 dark:text-slate-400">
+                    Median
+                  </span>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white font-mono mt-1 truncate">
+                    {profileData.numeric_stats?.median ?? "—"}
+                  </p>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 min-h-[68px]">
+                  <span className="text-slate-500 dark:text-slate-400">
+                    Skewness
+                  </span>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white font-mono mt-1 truncate">
+                    {profileData.numeric_stats?.skew ?? "—"}
+                  </p>
+                </div>
+              </div>
 
               {/* Profiler Chart */}
-              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-5 shadow-sm">
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-5 shadow-sm overflow-hidden">
                 <PlotlyChart spec={profileData.figure_spec} height={320} />
               </div>
             </div>
