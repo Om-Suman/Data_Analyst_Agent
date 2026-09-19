@@ -31,6 +31,7 @@ import { PlotlyChart } from "../components/PlotlyChart";
 import { DataTable } from "../components/DataTable";
 import { datasetApi, queryApi } from "../api/client";
 import { QueryHistoryItem } from "../types";
+import { useToast } from "../components/Toast";
 
 export const DashboardPage: React.FC = () => {
   const {
@@ -80,14 +81,22 @@ export const DashboardPage: React.FC = () => {
       .catch((err) => console.error(err));
   }, []);
 
+  const { success, error } = useToast();
+
   const handleLoadDemo = async (sampleName: string) => {
     setLoadingSample(sampleName);
     try {
       await datasetApi.loadSample(sampleName);
       await refreshDatasets();
-      await refreshPreview();
-    } catch (err) {
+      success("Demo Loaded", `Successfully loaded ${sampleName}!`);
+    } catch (err: any) {
       console.error("Failed to load demo sample", err);
+      error(
+        "Load Failed",
+        err?.response?.data?.detail ||
+          err?.message ||
+          "Failed to load demo sample.",
+      );
     } finally {
       setLoadingSample(null);
     }

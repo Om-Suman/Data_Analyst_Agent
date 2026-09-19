@@ -71,13 +71,15 @@ class UploadFileAdapter:
 def make_sales_sample() -> pd.DataFrame:
     rng = np.random.default_rng(42)
     n = 500
+    sales_arr = np.clip(rng.normal(1000, 300, n), 50, None).round(2)
+    profit_arr = rng.normal(200, 80, n).round(2)
     return pd.DataFrame({
         "date": pd.date_range("2023-01-01", periods=n, freq="D"),
         "region": rng.choice(["North", "South", "East", "West"], n),
         "product": rng.choice(["Widget A", "Widget B", "Widget C", "Gadget X"], n),
-        "sales": rng.normal(1000, 300, n).clip(50).round(2),
+        "sales": sales_arr,
         "units": rng.integers(1, 100, n),
-        "profit": rng.normal(200, 80, n).round(2),
+        "profit": profit_arr,
         "customer_id": rng.integers(1000, 9999, n),
     })
 
@@ -85,10 +87,11 @@ def make_sales_sample() -> pd.DataFrame:
 def make_employee_sample() -> pd.DataFrame:
     rng = np.random.default_rng(7)
     n = 300
+    salary_arr = np.clip(rng.normal(75000, 20000, n), 30000, None).round(0)
     return pd.DataFrame({
-        "employee_id": range(1, n + 1),
+        "employee_id": list(range(1, n + 1)),
         "department": rng.choice(["Engineering", "Sales", "Marketing", "HR", "Finance"], n),
-        "salary": rng.normal(75000, 20000, n).clip(30000).round(0),
+        "salary": salary_arr,
         "years_experience": rng.integers(0, 20, n),
         "performance_score": rng.uniform(1, 5, n).round(1),
         "remote": rng.choice([True, False], n),

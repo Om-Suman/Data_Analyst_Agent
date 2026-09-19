@@ -38,10 +38,17 @@ function getSessionId(): string {
 
 export const api = axios.create({
   baseURL: "/api",
-  headers: {
-    "Content-Type": "application/json",
-    "X-Session-ID": getSessionId(),
-  },
+});
+
+// Attach dynamic session ID and handle FormData Content-Type automatically
+api.interceptors.request.use((config) => {
+  if (config.headers) {
+    config.headers.set("X-Session-ID", getSessionId());
+    if (config.data instanceof FormData) {
+      config.headers.delete("Content-Type");
+    }
+  }
+  return config;
 });
 
 // Config & Settings API
@@ -73,9 +80,7 @@ export const datasetApi = {
     Array.from(files).forEach((file) => {
       formData.append("files", file);
     });
-    const res = await api.post("/datasets/upload", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    const res = await api.post("/datasets/upload", formData);
     return res.data;
   },
   loadSample: async (sampleName: string) => {

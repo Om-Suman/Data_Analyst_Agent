@@ -1,5 +1,5 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
+import React from "react";
+import { NavLink } from "react-router-dom";
 import {
   Database,
   Key,
@@ -10,29 +10,45 @@ import {
   Terminal,
   Layers,
   RefreshCw,
-} from 'lucide-react';
-import { useDataset } from '../context/DatasetContext';
-import { useTheme } from '../context/ThemeContext';
-import { datasetApi } from '../api/client';
-import { useToast } from './Toast';
+} from "lucide-react";
+import { useDataset } from "../context/DatasetContext";
+import { useTheme } from "../context/ThemeContext";
+import { datasetApi } from "../api/client";
+import { useToast } from "./Toast";
 
 interface NavbarProps {
   onToggleCopilot?: () => void;
   isCopilotOpen?: boolean;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onToggleCopilot, isCopilotOpen }) => {
-  const { datasets, activeDatasetName, setActiveDataset, refreshDatasets, config, pinnedCharts } = useDataset();
+export const Navbar: React.FC<NavbarProps> = ({
+  onToggleCopilot,
+  isCopilotOpen,
+}) => {
+  const {
+    datasets,
+    activeDatasetName,
+    setActiveDataset,
+    refreshDatasets,
+    config,
+    pinnedCharts,
+  } = useDataset();
   const { theme, toggleTheme } = useTheme();
-  const { success } = useToast();
+  const { success, error } = useToast();
 
   const handleSample = async (name: string) => {
     try {
       await datasetApi.loadSample(name);
       await refreshDatasets();
-      success('Dataset Loaded', `Switched to sample: ${name}`);
-    } catch (err) {
+      success("Dataset Loaded", `Switched to sample: ${name}`);
+    } catch (err: any) {
       console.error(err);
+      error(
+        "Load Failed",
+        err?.response?.data?.detail ||
+          err?.message ||
+          "Failed to load sample dataset.",
+      );
     }
   };
 
@@ -43,7 +59,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleCopilot, isCopilotOpen }
         <div className="flex items-center gap-2">
           <Database className="h-4 w-4 text-blue-500 flex-shrink-0" />
           <select
-            value={activeDatasetName || ''}
+            value={activeDatasetName || ""}
             onChange={(e) => {
               if (e.target.value) setActiveDataset(e.target.value);
             }}
@@ -54,7 +70,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleCopilot, isCopilotOpen }
             ) : (
               datasets.map((d) => (
                 <option key={d.name} value={d.name}>
-                  {d.name} ({d.rows > 0 ? `${d.rows.toLocaleString()} rows` : 'text'})
+                  {d.name} (
+                  {d.rows > 0 ? `${d.rows.toLocaleString()} rows` : "text"})
                 </option>
               ))
             )}
@@ -63,14 +80,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleCopilot, isCopilotOpen }
 
         {/* Quick Demo Pill Buttons */}
         <div className="hidden xl:flex items-center gap-1.5 pl-3 border-l border-slate-200 dark:border-slate-800">
-          <span className="text-xs text-slate-400 font-medium">Quick Demo:</span>
-          {['Sales Data', 'Employee Data', 'Finance Data'].map((sName) => (
+          <span className="text-xs text-slate-400 font-medium">
+            Quick Demo:
+          </span>
+          {["Sales Data", "Employee Data", "Finance Data"].map((sName) => (
             <button
               key={sName}
               onClick={() => handleSample(sName)}
               className="text-xs px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700/60 font-medium transition-colors"
             >
-              {sName.split(' ')[0]}
+              {sName.split(" ")[0]}
             </button>
           ))}
         </div>
@@ -104,10 +123,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleCopilot, isCopilotOpen }
         {/* Theme Switcher Toggle Button */}
         <button
           onClick={toggleTheme}
-          title={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+          title={
+            theme === "dark" ? "Switch to Light Theme" : "Switch to Dark Theme"
+          }
           className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/60 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors"
         >
-          {theme === 'dark' ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-indigo-600" />}
+          {theme === "dark" ? (
+            <Sun className="h-4 w-4 text-amber-400" />
+          ) : (
+            <Moon className="h-4 w-4 text-indigo-600" />
+          )}
         </button>
 
         {/* Global AI Copilot Toggle Button */}
@@ -115,8 +140,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleCopilot, isCopilotOpen }
           onClick={onToggleCopilot}
           className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold shadow-sm transition-all ${
             isCopilotOpen
-              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-600/30 ring-2 ring-blue-400'
-              : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-blue-600/20'
+              ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-600/30 ring-2 ring-blue-400"
+              : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-blue-600/20"
           }`}
         >
           <Sparkles className="h-4 w-4 animate-spin-slow" />

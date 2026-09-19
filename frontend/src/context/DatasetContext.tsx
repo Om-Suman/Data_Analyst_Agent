@@ -106,6 +106,16 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({
       const res = await datasetApi.listDatasets();
       setDatasets(res.datasets);
       setActiveDatasetNameState(res.active_dataset);
+      if (res.active_dataset) {
+        try {
+          const prev = await datasetApi.getPreview(50);
+          setPreview(prev);
+        } catch {
+          setPreview(null);
+        }
+      } else {
+        setPreview(null);
+      }
     } catch (err) {
       console.error("Failed to list datasets", err);
     } finally {
