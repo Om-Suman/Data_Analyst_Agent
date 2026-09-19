@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Sparkles,
   X,
@@ -11,35 +11,39 @@ import {
   AlertCircle,
   Copy,
   Check,
-} from 'lucide-react';
-import { useDataset } from '../context/DatasetContext';
-import { queryApi } from '../api/client';
-import { QueryResponse } from '../types';
-import { PlotlyChart } from './PlotlyChart';
-import { DataTable } from './DataTable';
-import { useToast } from './Toast';
-import { MarkdownRenderer } from './MarkdownRenderer';
-
+} from "lucide-react";
+import { useDataset } from "../context/DatasetContext";
+import { queryApi } from "../api/client";
+import { QueryResponse } from "../types";
+import { PlotlyChart } from "./PlotlyChart";
+import { DataTable } from "./DataTable";
+import { useToast } from "./Toast";
+import { MarkdownRenderer } from "./MarkdownRenderer";
 
 interface AICopilotDrawerProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({ isOpen, onClose }) => {
+export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({
+  isOpen,
+  onClose,
+}) => {
   const { hasDataset, activeDataset } = useDataset();
   const { success } = useToast();
 
-  const [question, setQuestion] = useState('');
+  const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
-  const [conversation, setConversation] = useState<{ q: string; res: QueryResponse }[]>([]);
+  const [conversation, setConversation] = useState<
+    { q: string; res: QueryResponse }[]
+  >([]);
   const [copiedCodeIdx, setCopiedCodeIdx] = useState<number | null>(null);
 
   const samplePrompts = [
-    'Summary statistics and key drivers',
-    'Which categories generate the highest revenue?',
-    'Detect top 5 anomalies in the dataset',
-    'Forecast the primary metric for the next 30 periods',
+    "Summary statistics and key drivers",
+    "Which categories generate the highest revenue?",
+    "Detect top 5 anomalies in the dataset",
+    "Forecast the primary metric for the next 30 periods",
   ];
 
   const handleSend = async (textToSend?: string) => {
@@ -50,7 +54,7 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({ isOpen, onClos
     try {
       const res = await queryApi.ask(q);
       setConversation((prev) => [...prev, { q, res }]);
-      setQuestion('');
+      setQuestion("");
     } catch (err: any) {
       console.error(err);
     } finally {
@@ -61,7 +65,7 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({ isOpen, onClos
   const handleCopyCode = (code: string, idx: number) => {
     navigator.clipboard.writeText(code);
     setCopiedCodeIdx(idx);
-    success('Code Copied', 'Python code copied to clipboard.');
+    success("Code Copied", "Python code copied to clipboard.");
     setTimeout(() => setCopiedCodeIdx(null), 2000);
   };
 
@@ -76,9 +80,13 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({ isOpen, onClos
             <Sparkles className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="font-bold text-sm text-slate-900 dark:text-white">AI Data Copilot</h3>
+            <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+              AI Data Copilot
+            </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              {hasDataset ? `Context: ${activeDataset?.name}` : 'No dataset active'}
+              {hasDataset
+                ? `Context: ${activeDataset?.name}`
+                : "No dataset active"}
             </p>
           </div>
         </div>
@@ -97,15 +105,20 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({ isOpen, onClos
           <div className="h-full flex flex-col justify-center items-center text-center p-6 space-y-4 text-slate-500 dark:text-slate-400">
             <Bot className="h-12 w-12 text-blue-500 opacity-60" />
             <div className="space-y-1">
-              <p className="font-bold text-slate-800 dark:text-slate-200 text-sm">How can I assist your analysis?</p>
+              <p className="font-bold text-slate-800 dark:text-slate-200 text-sm">
+                How can I assist your analysis?
+              </p>
               <p className="text-xs leading-relaxed max-w-xs">
-                Ask questions in plain English. I'll route queries, execute Pandas/Plotly code, and explain statistical insights.
+                Ask questions in plain English. I'll route queries, execute
+                Pandas/Plotly code, and explain statistical insights.
               </p>
             </div>
 
             {hasDataset && (
               <div className="w-full space-y-2 pt-2 text-left">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Try asking:</p>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Try asking:
+                </p>
                 {samplePrompts.map((prompt, idx) => (
                   <button
                     key={idx}
@@ -143,17 +156,28 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({ isOpen, onClos
                 {/* Explanation text */}
                 {item.res.insights && (
                   <div className="text-slate-800 dark:text-slate-200">
-                    <MarkdownRenderer content={item.res.insights} showKpiCards={false} />
+                    <MarkdownRenderer
+                      content={item.res.insights}
+                      showKpiCards={false}
+                    />
                   </div>
                 )}
 
                 {/* Plotly Chart Spec if present */}
-                {item.res.execution_results?.some((e) => e.figures && e.figures.length > 0) && (
+                {item.res.execution_results?.some(
+                  (e) => e.figures && e.figures.length > 0,
+                ) && (
                   <div className="mt-2 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-2">
                     {item.res.execution_results.map((e, eIdx) =>
                       e.figures.map((fig, fIdx) => (
-                        <PlotlyChart key={`${eIdx}-${fIdx}`} spec={fig} height={280} title={item.q} sourcePage="AI Copilot" />
-                      ))
+                        <PlotlyChart
+                          key={`${eIdx}-${fIdx}`}
+                          spec={fig}
+                          height={280}
+                          title={item.q}
+                          sourcePage="AI Copilot"
+                        />
+                      )),
                     )}
                   </div>
                 )}
@@ -167,15 +191,21 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({ isOpen, onClos
                         Executed Python Sandbox
                       </span>
                       <button
-                        onClick={() => handleCopyCode(item.res.code_blocks.join('\n\n'), idx)}
+                        onClick={() =>
+                          handleCopyCode(item.res.code_blocks.join("\n\n"), idx)
+                        }
                         className="flex items-center gap-1 hover:text-white transition-colors"
                       >
-                        {copiedCodeIdx === idx ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
-                        {copiedCodeIdx === idx ? 'Copied' : 'Copy'}
+                        {copiedCodeIdx === idx ? (
+                          <Check className="h-3 w-3 text-emerald-400" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                        {copiedCodeIdx === idx ? "Copied" : "Copy"}
                       </button>
                     </div>
                     <pre className="p-3 text-slate-200 font-mono text-[11px] overflow-x-auto max-h-40">
-                      {item.res.code_blocks.join('\n\n')}
+                      {item.res.code_blocks.join("\n\n")}
                     </pre>
                   </div>
                 )}
@@ -206,7 +236,11 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({ isOpen, onClos
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             disabled={!hasDataset || loading}
-            placeholder={hasDataset ? 'Ask a question or request a chart...' : 'Load a dataset first...'}
+            placeholder={
+              hasDataset
+                ? "Ask a question or request a chart..."
+                : "Load a dataset first..."
+            }
             className="flex-1 bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700/80 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
           />
           <button
