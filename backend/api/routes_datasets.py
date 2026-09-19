@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import os
 from typing import List, Optional
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
@@ -54,9 +55,12 @@ async def upload_files(
     results = []
     errors = []
 
+    MAX_UPLOAD_SIZE = int(os.environ.get("MAX_UPLOAD_SIZE_MB", 100)) * 1024 * 1024
     for file in files:
         try:
             content = await file.read()
+            if len(content) > MAX_UPLOAD_SIZE:
+                raise ValueError(f"File size ({round(len(content)/(1024*1024), 1)}MB) exceeds maximum limit of {MAX_UPLOAD_SIZE//(1024*1024)}MB.")
             filename = file.filename or "untitled"
             res = process_and_register_file(session, filename, content)
             results.append(res)

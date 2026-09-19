@@ -11,8 +11,11 @@ import { useDataset } from "../context/DatasetContext";
 import { datasetApi, reportsApi } from "../api/client";
 import { ProfileResponse } from "../types";
 
+import { useToast } from "../components/Toast";
+
 export const ReportsPage: React.FC = () => {
   const { activeDataset, hasDataset } = useDataset();
+  const { success, error } = useToast();
 
   const [includeSample, setIncludeSample] = useState(true);
   const [includeStats, setIncludeStats] = useState(true);
@@ -37,9 +40,13 @@ export const ReportsPage: React.FC = () => {
         include_stats: includeStats,
         include_insights: includeInsights,
       });
-    } catch (err) {
+      success(
+        "Report Downloaded",
+        "Interactive HTML report generated successfully.",
+      );
+    } catch (err: any) {
       console.error(err);
-      alert("Failed to generate HTML report.");
+      error("Export Failed", err?.message || "Failed to generate HTML report.");
     } finally {
       setDownloadingHtml(false);
     }
@@ -49,9 +56,10 @@ export const ReportsPage: React.FC = () => {
     setDownloadingExcel(true);
     try {
       await reportsApi.downloadExcelReport();
-    } catch (err) {
+      success("Report Downloaded", "Excel workbook generated successfully.");
+    } catch (err: any) {
       console.error(err);
-      alert("Failed to export Excel report.");
+      error("Export Failed", err?.message || "Failed to export Excel report.");
     } finally {
       setDownloadingExcel(false);
     }

@@ -143,6 +143,9 @@ class SessionState:
             "df_snapshot": record["df"].copy(),
         }
         self.dataset_versions[name].append(snapshot)
+        # Cap version history to last 10 snapshots to prevent unbounded memory bloat
+        if len(self.dataset_versions[name]) > 10:
+            self.dataset_versions[name] = self.dataset_versions[name][-10:]
 
     def save_version(self, name: str, description: str = ""):
         with self._lock:
@@ -268,8 +271,29 @@ class SessionManager:
                 cls._instance._manager_lock = threading.RLock()
             return cls._instance
 
+    def _cleanup_expired_sessions(self):
+        now = datetime.now()
+        ttl_seconds = int(os.environ.get("SESSION_TTL_HOURS", 24)) * 3600
+        max_sessions = int(os.environ.get("MAX_SESSIONS", 50))
+        expired = [
+            sid for sid, sess in self._sessions.items()
+            if sid != "default" and (now - sess.last_accessed).total_seconds() > ttl_seconds
+        ]
+        for sid in expired:
+            del self._sessions[sid]
+
+        if len(self._sessions) > max_sessions:
+            non_default = sorted(
+                [(sid, s.last_accessed) for sid, s in self._sessions.items() if sid != "default"],
+                key=lambda x: x[1]
+            )
+            to_evict = non_default[:len(self._sessions) - max_sessions]
+            for sid, _ in to_evict:
+                del self._sessions[sid]
+
     def get_session(self, session_id: str = "default") -> SessionState:
         with self._manager_lock:
+            self._cleanup_expired_sessions()
             sid = session_id.strip() if session_id and session_id.strip() else "default"
             if sid not in self._sessions:
                 self._sessions[sid] = SessionState(session_id=sid)

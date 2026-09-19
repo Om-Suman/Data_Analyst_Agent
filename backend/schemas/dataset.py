@@ -21,6 +21,7 @@ class DatasetListResponse(BaseModel):
 
 class DatasetPreviewResponse(BaseModel):
     name: str
+    version: int = 1
     rows: int
     cols: int
     columns: list[str]

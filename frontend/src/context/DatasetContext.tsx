@@ -1,6 +1,18 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { ConfigState, DatasetItem, DatasetPreviewResponse, PinnedChartItem, PinChartRequest } from '../types';
-import { configApi, datasetApi } from '../api/client';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
+import {
+  ConfigState,
+  DatasetItem,
+  DatasetPreviewResponse,
+  PinnedChartItem,
+  PinChartRequest,
+} from "../types";
+import { configApi, datasetApi } from "../api/client";
 
 interface DatasetContextType {
   datasets: DatasetItem[];
@@ -23,9 +35,13 @@ interface DatasetContextType {
 
 const DatasetContext = createContext<DatasetContextType | undefined>(undefined);
 
-export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [datasets, setDatasets] = useState<DatasetItem[]>([]);
-  const [activeDatasetName, setActiveDatasetNameState] = useState<string | null>(null);
+  const [activeDatasetName, setActiveDatasetNameState] = useState<
+    string | null
+  >(null);
   const [preview, setPreview] = useState<DatasetPreviewResponse | null>(null);
   const [config, setConfig] = useState<ConfigState | null>(null);
   const [pinnedCharts, setPinnedCharts] = useState<PinnedChartItem[]>([]);
@@ -37,7 +53,7 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const cfg = await configApi.getConfig();
       setConfig(cfg);
     } catch (err) {
-      console.error('Failed to load config', err);
+      console.error("Failed to load config", err);
     }
   }, []);
 
@@ -46,20 +62,26 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const res = await datasetApi.getPinnedCharts();
       setPinnedCharts(res.pinned_charts || []);
     } catch (err) {
-      console.error('Failed to load pinned charts', err);
+      console.error("Failed to load pinned charts", err);
     }
   }, []);
 
-  const pinChart = useCallback(async (req: PinChartRequest) => {
-    const item = await datasetApi.pinChart(req);
-    await refreshPinnedCharts();
-    return item;
-  }, [refreshPinnedCharts]);
+  const pinChart = useCallback(
+    async (req: PinChartRequest) => {
+      const item = await datasetApi.pinChart(req);
+      await refreshPinnedCharts();
+      return item;
+    },
+    [refreshPinnedCharts],
+  );
 
-  const unpinChart = useCallback(async (pinId: string) => {
-    await datasetApi.unpinChart(pinId);
-    await refreshPinnedCharts();
-  }, [refreshPinnedCharts]);
+  const unpinChart = useCallback(
+    async (pinId: string) => {
+      await datasetApi.unpinChart(pinId);
+      await refreshPinnedCharts();
+    },
+    [refreshPinnedCharts],
+  );
 
   const refreshPreview = useCallback(async () => {
     if (!activeDatasetName) {
@@ -71,7 +93,7 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const data = await datasetApi.getPreview(50);
       setPreview(data);
     } catch (err) {
-      console.error('Failed to load dataset preview', err);
+      console.error("Failed to load dataset preview", err);
       setPreview(null);
     } finally {
       setPreviewLoading(false);
@@ -85,7 +107,7 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setDatasets(res.datasets);
       setActiveDatasetNameState(res.active_dataset);
     } catch (err) {
-      console.error('Failed to list datasets', err);
+      console.error("Failed to list datasets", err);
     } finally {
       setLoading(false);
     }
@@ -98,10 +120,10 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setActiveDatasetNameState(name);
         await refreshDatasets();
       } catch (err) {
-        console.error('Failed to set active dataset', err);
+        console.error("Failed to set active dataset", err);
       }
     },
-    [refreshDatasets]
+    [refreshDatasets],
   );
 
   useEffect(() => {
@@ -114,7 +136,24 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ child
     refreshPreview();
   }, [activeDatasetName, refreshPreview]);
 
-  const activeDataset = datasets.find((d) => d.name === activeDatasetName) || null;
+  const baseActive = datasets.find((d) => d.name === activeDatasetName) || null;
+  const activeDataset = baseActive
+    ? {
+        ...baseActive,
+        version:
+          preview?.name === baseActive.name && preview.version
+            ? preview.version
+            : baseActive.version,
+        rows:
+          preview?.name === baseActive.name && preview.rows
+            ? preview.rows
+            : baseActive.rows,
+        cols:
+          preview?.name === baseActive.name && preview.cols
+            ? preview.cols
+            : baseActive.cols,
+      }
+    : null;
   const hasDataset = Boolean(activeDataset);
 
   return (
@@ -146,7 +185,7 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ child
 export const useDataset = () => {
   const context = useContext(DatasetContext);
   if (!context) {
-    throw new Error('useDataset must be used within a DatasetProvider');
+    throw new Error("useDataset must be used within a DatasetProvider");
   }
   return context;
 };

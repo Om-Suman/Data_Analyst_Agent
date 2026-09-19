@@ -178,15 +178,16 @@ def generate_quick_profile(session: SessionState) -> dict[str, Any]:
     categorical_profiles = []
     if not cat.empty:
         for col in cat.columns:
-            mode_val = str(df[col].mode()[0]) if df[col].notna().any() else ""
-            mode_cnt = int(df[col].value_counts().iloc[0]) if df[col].notna().any() else 0
+            vc = df[col].dropna().value_counts()
+            mode_val = str(vc.index[0]) if not vc.empty else ""
+            mode_cnt = int(vc.iloc[0]) if not vc.empty else 0
             categorical_profiles.append({
                 "column": col,
                 "unique_values": int(df[col].nunique()),
                 "most_common": mode_val,
                 "most_common_count": mode_cnt,
                 "missing": int(df[col].isnull().sum()),
-                "missing_pct": round(df[col].isnull().sum() / len(df) * 100, 1),
+                "missing_pct": round(df[col].isnull().sum() / max(len(df), 1) * 100, 1),
             })
 
     return to_json_compatible({

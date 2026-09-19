@@ -14,7 +14,7 @@ from modules.document_rag import build_document_bundle, store_document_bundle
 
 def to_json_compatible(obj: Any) -> Any:
     """Recursively convert numpy types, timestamps, NaNs, and custom objects to JSON-friendly primitives."""
-    if obj is None:
+    if obj is None or obj is pd.NaT:
         return None
     if isinstance(obj, (bool, np.bool_)):
         return bool(obj)
@@ -69,46 +69,46 @@ class UploadFileAdapter:
 
 
 def make_sales_sample() -> pd.DataFrame:
-    np.random.seed(42)
+    rng = np.random.default_rng(42)
     n = 500
     return pd.DataFrame({
         "date": pd.date_range("2023-01-01", periods=n, freq="D"),
-        "region": np.random.choice(["North", "South", "East", "West"], n),
-        "product": np.random.choice(["Widget A", "Widget B", "Widget C", "Gadget X"], n),
-        "sales": np.random.normal(1000, 300, n).clip(50).round(2),
-        "units": np.random.randint(1, 100, n),
-        "profit": np.random.normal(200, 80, n).round(2),
-        "customer_id": np.random.randint(1000, 9999, n),
+        "region": rng.choice(["North", "South", "East", "West"], n),
+        "product": rng.choice(["Widget A", "Widget B", "Widget C", "Gadget X"], n),
+        "sales": rng.normal(1000, 300, n).clip(50).round(2),
+        "units": rng.integers(1, 100, n),
+        "profit": rng.normal(200, 80, n).round(2),
+        "customer_id": rng.integers(1000, 9999, n),
     })
 
 
 def make_employee_sample() -> pd.DataFrame:
-    np.random.seed(7)
+    rng = np.random.default_rng(7)
     n = 300
     return pd.DataFrame({
         "employee_id": range(1, n + 1),
-        "department": np.random.choice(["Engineering", "Sales", "Marketing", "HR", "Finance"], n),
-        "salary": np.random.normal(75000, 20000, n).clip(30000).round(0),
-        "years_experience": np.random.randint(0, 20, n),
-        "performance_score": np.random.uniform(1, 5, n).round(1),
-        "remote": np.random.choice([True, False], n),
+        "department": rng.choice(["Engineering", "Sales", "Marketing", "HR", "Finance"], n),
+        "salary": rng.normal(75000, 20000, n).clip(30000).round(0),
+        "years_experience": rng.integers(0, 20, n),
+        "performance_score": rng.uniform(1, 5, n).round(1),
+        "remote": rng.choice([True, False], n),
         "hire_date": pd.date_range("2015-01-01", periods=n, freq="30D"),
     })
 
 
 def make_finance_sample() -> pd.DataFrame:
-    np.random.seed(99)
+    rng = np.random.default_rng(99)
     n = 365
     base = 100
-    returns = np.random.normal(0.001, 0.02, n)
+    returns = rng.normal(0.001, 0.02, n)
     prices = base * (1 + returns).cumprod()
     return pd.DataFrame({
         "date": pd.date_range("2023-01-01", periods=n),
         "close": prices.round(2),
-        "volume": np.random.randint(1_000_000, 10_000_000, n),
-        "high": (prices * np.random.uniform(1.0, 1.03, n)).round(2),
-        "low": (prices * np.random.uniform(0.97, 1.0, n)).round(2),
-        "category": np.random.choice(["Tech", "Finance", "Healthcare", "Energy"], n),
+        "volume": rng.integers(1_000_000, 10_000_000, n),
+        "high": (prices * rng.uniform(1.0, 1.03, n)).round(2),
+        "low": (prices * rng.uniform(0.97, 1.0, n)).round(2),
+        "category": rng.choice(["Tech", "Finance", "Healthcare", "Energy"], n),
     })
 
 
@@ -177,6 +177,7 @@ def get_dataset_preview(session: SessionState, limit: int = 50) -> dict[str, Any
     if is_text or df is None:
         return {
             "name": name,
+            "version": int(record.get("version", 1)),
             "rows": 0,
             "cols": 0,
             "columns": [],
@@ -198,6 +199,7 @@ def get_dataset_preview(session: SessionState, limit: int = 50) -> dict[str, Any
 
     return {
         "name": name,
+        "version": int(record.get("version", 1)),
         "rows": int(len(df)),
         "cols": int(len(df.columns)),
         "columns": [str(c) for c in df.columns],

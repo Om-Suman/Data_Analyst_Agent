@@ -30,6 +30,7 @@ export interface DatasetListResponse {
 
 export interface DatasetPreviewResponse {
   name: string;
+  version?: number;
   rows: number;
   cols: number;
   columns: string[];
@@ -49,7 +50,11 @@ export interface QualityScoreResponse {
   missing_pct: number;
   duplicate_rows: number;
   duplicate_pct: number;
-  missing_by_column: { column: string; missing_count: number; missing_pct: number }[];
+  missing_by_column: {
+    column: string;
+    missing_count: number;
+    missing_pct: number;
+  }[];
   dtypes_by_column: { column: string; dtype: string }[];
 }
 
@@ -266,7 +271,13 @@ export interface SQLQueryResponse {
 
 export interface ColumnTransformRequest {
   column: string;
-  operation: 'cast' | 'math_expr' | 'rename' | 'string_case' | 'create_column' | 'drop';
+  operation:
+    | "cast"
+    | "math_expr"
+    | "rename"
+    | "string_case"
+    | "create_column"
+    | "drop";
   target_type?: string;
   new_name?: string;
   expression?: string;

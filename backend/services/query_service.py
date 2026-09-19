@@ -12,9 +12,10 @@ from backend.services.dataset_service import sanitize_dataframe_for_json
 from modules.langchain_query import run_routed_query
 
 
-def _serialize_execution_results(exec_results: list) -> list[dict[str, Any]]:
+def _serialize_execution_results(exec_results: list, code_blocks: Optional[list[str]] = None) -> list[dict[str, Any]]:
     serialized = []
-    for res in exec_results:
+    code_blocks = code_blocks or []
+    for idx, res in enumerate(exec_results):
         figures_json = []
         for fig in getattr(res, "figures", []):
             try:
@@ -27,8 +28,12 @@ def _serialize_execution_results(exec_results: list) -> list[dict[str, Any]]:
             if isinstance(sub_df, pd.DataFrame):
                 dfs_json[name] = sanitize_dataframe_for_json(sub_df.head(50))
 
+        code_val = getattr(res, "code", "")
+        if not code_val and idx < len(code_blocks):
+            code_val = code_blocks[idx]
+
         serialized.append({
-            "code": getattr(res, "code", ""),
+            "code": str(code_val or ""),
             "success": bool(getattr(res, "success", False)),
             "execution_time": round(float(getattr(res, "execution_time", 0.0)), 3),
             "stdout": str(getattr(res, "stdout", "")),
@@ -117,11 +122,7 @@ def execute_ai_query(
 
     code_blocks = raw_result.get("code_blocks", [])
     raw_exec_results = raw_result.get("execution_results", [])
-    for idx, cb in enumerate(code_blocks):
-        if idx < len(raw_exec_results):
-            raw_exec_results[idx].code = cb
-
-    exec_results = _serialize_execution_results(raw_exec_results)
+    exec_results = _serialize_execution_results(raw_exec_results, code_blocks=code_blocks)
     tool_result = _serialize_tool_result(raw_result.get("tool_result"))
 
     insights_text = raw_result.get("insights", "") or raw_result.get("llm_response", "")
@@ -249,6 +250,17 @@ def execute_sql_query(session: SessionState, query: str, limit: int = 500) -> di
             safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", session.active_dataset)
             if safe_name and safe_name not in ("df", "data"):
                 df.to_sql(safe_name, conn, index=False, if_exists="replace")
+
+        # Set engine-level authorizer to strictly enforce read-only execution
+        def _read_only_authorizer(action, arg1, arg2, db_name, trigger_name):
+            allowed = {
+                sqlite3.SQLITE_SELECT,
+                sqlite3.SQLITE_READ,
+                sqlite3.SQLITE_FUNCTION,
+            }
+            return sqlite3.SQLITE_OK if action in allowed else sqlite3.SQLITE_DENY
+
+        conn.set_authorizer(_read_only_authorizer)
 
         result_df = pd.read_sql_query(q_clean, conn)
         exec_ms = round((time.time() - start_time) * 1000, 2)

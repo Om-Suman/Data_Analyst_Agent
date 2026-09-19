@@ -98,9 +98,9 @@ def validate_code(code: str) -> tuple[bool, str]:
 def clean_code(code: str) -> str:
     """Clean up LLM-generated code."""
 
-    # Remove import statements
-    code = re.sub(r"^\s*import\s+.*$", "", code, flags=re.MULTILINE)
-    code = re.sub(r"^\s*from\s+.*?\s+import\s+.*$", "", code, flags=re.MULTILINE)
+    # Remove valid import statements (matching valid Python identifiers, not arbitrary text or strings)
+    code = re.sub(r"^\s*import\s+[a-zA-Z_][a-zA-Z0-9_.,\s]*$", "", code, flags=re.MULTILINE)
+    code = re.sub(r"^\s*from\s+[a-zA-Z_][a-zA-Z0-9_.]*\s+import\s+.*$", "", code, flags=re.MULTILINE)
 
     # Remove plt.show()
     code = re.sub(r"plt\.show\(\)\s*", "", code)
@@ -141,12 +141,23 @@ def execute_code(code: str, df: pd.DataFrame, timeout: int = 30) -> ExecutionRes
     plt.close("all")
 
     start = time.time()
+
+    def _timeout_tracer(frame, event, arg):
+        if time.time() - start > timeout:
+            raise TimeoutError(f"Execution timed out after {timeout} seconds.")
+        return _timeout_tracer
+
+    old_trace = sys.gettrace()
     try:
+        sys.settrace(_timeout_tracer)
         exec(code, exec_globals)
         result.success = True
+    except TimeoutError as te:
+        result.error = str(te)
     except Exception:
         result.error = traceback.format_exc()
     finally:
+        sys.settrace(old_trace)
         sys.stdout = old_stdout
         result.execution_time = time.time() - start
 
