@@ -18,27 +18,51 @@ def _get_active_store(store: Optional[dict] = None) -> dict:
     return _GLOBAL_DOCUMENT_INDEXES
 
 
-try:
-    from llama_index.core import Document, Settings, VectorStoreIndex
+_LLAMA_INDEX_LOADED: bool | None = None
+Document: Any = None
+Settings: Any = None
+VectorStoreIndex: Any = None
+MockEmbedding: Any = None
+HuggingFaceEmbedding: Any = None
+
+
+def _init_llamaindex() -> bool:
+    global _LLAMA_INDEX_LOADED, Document, Settings, VectorStoreIndex, MockEmbedding, HuggingFaceEmbedding
+    if _LLAMA_INDEX_LOADED is not None:
+        return _LLAMA_INDEX_LOADED
 
     try:
-        from llama_index.core.embeddings import MockEmbedding
+        from llama_index.core import Document as _Doc, Settings as _Set, VectorStoreIndex as _VSI
+        Document = _Doc
+        Settings = _Set
+        VectorStoreIndex = _VSI
+
+        try:
+            from llama_index.core.embeddings import MockEmbedding as _ME
+            MockEmbedding = _ME
+        except Exception:
+            MockEmbedding = None
+
+        try:
+            from llama_index.embeddings.huggingface import HuggingFaceEmbedding as _HFE
+            HuggingFaceEmbedding = _HFE
+        except Exception:
+            HuggingFaceEmbedding = None
+
+        _LLAMA_INDEX_LOADED = True
     except Exception:
+        Document = None
+        Settings = None
+        VectorStoreIndex = None
         MockEmbedding = None
-
-    try:
-        from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-    except Exception:
         HuggingFaceEmbedding = None
+        _LLAMA_INDEX_LOADED = False
 
-    LLAMAINDEX_AVAILABLE = True
-except Exception:
-    Document = None
-    Settings = None
-    VectorStoreIndex = None
-    MockEmbedding = None
-    HuggingFaceEmbedding = None
-    LLAMAINDEX_AVAILABLE = False
+    return _LLAMA_INDEX_LOADED
+
+
+def llamaindex_available() -> bool:
+    return _init_llamaindex()
 
 
 DOCUMENT_SYSTEM_PROMPT = """You answer questions strictly from the provided document context.
@@ -96,7 +120,7 @@ def build_document_bundle(text: str, metadata: dict | None = None) -> dict:
         "engine": "fallback",
     }
 
-    if not LLAMAINDEX_AVAILABLE or not chunks:
+    if not llamaindex_available() or not chunks:
         return bundle
 
     try:
