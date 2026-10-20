@@ -100,6 +100,10 @@ export const AIQueryPage: React.FC = () => {
       error: null,
     });
 
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+      mainEl.scrollTo({ top: 0, behavior: "smooth" });
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 

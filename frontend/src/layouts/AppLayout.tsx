@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { Navbar } from '../components/Navbar';
 import { AICopilotDrawer } from '../components/AICopilotDrawer';
@@ -7,6 +7,16 @@ import { AICopilotDrawer } from '../components/AICopilotDrawer';
 export const AppLayout: React.FC = () => {
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const location = useLocation();
+  const mainRef = useRef<HTMLElement>(null);
+
+  // Automatically scroll main container and window to top on route change
+  useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [location.pathname]);
 
   // Global keyboard shortcut to toggle Copilot (Cmd+K / Ctrl+K)
   useEffect(() => {
@@ -31,7 +41,10 @@ export const AppLayout: React.FC = () => {
           onToggleCopilot={() => setIsCopilotOpen(!isCopilotOpen)}
           isCopilotOpen={isCopilotOpen}
         />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto overflow-y-auto">
+        <main
+          ref={mainRef}
+          className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto overflow-y-auto"
+        >
           <Outlet />
         </main>
       </div>
