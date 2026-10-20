@@ -57,7 +57,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { to: '/forecasting', label: 'Forecasting', icon: TrendingUp, badge: null },
     { to: '/anomalies', label: 'Anomaly Detection', icon: AlertTriangle, badge: null },
     { to: '/reports', label: 'Export Reports', icon: FileSpreadsheet, badge: null },
-    { to: '/settings', label: 'HF Config & Settings', icon: Settings, badge: null },
+    { to: '/settings', label: 'Groq Config & Settings', icon: Settings, badge: null },
   ];
 
   return (

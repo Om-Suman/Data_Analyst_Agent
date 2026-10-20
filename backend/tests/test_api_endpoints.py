@@ -21,8 +21,8 @@ def test_config_endpoints(client):
     update_res = client.post(
         "/api/config",
         json={
-            "hf_api_key": "hf_test_secret_key_12345",
-            "primary_model": "Qwen/Qwen3-32B",
+            "groq_api_key": "gsk_test_secret_key_12345",
+            "primary_model": "qwen/qwen3.8-27b",
             "theme": "light",
             "temperature": 0.5,
         },
@@ -30,11 +30,11 @@ def test_config_endpoints(client):
     assert update_res.status_code == 200
     updated = update_res.json()
     assert updated["has_api_key"] is True
-    assert updated["primary_model"] == "Qwen/Qwen3-32B"
+    assert updated["primary_model"] == "qwen/qwen3.8-27b"
     assert updated["theme"] == "light"
     assert updated["temperature"] == 0.5
     # Ensure raw API key is never exposed
-    assert "hf_test_secret_key_12345" not in updated["api_key_masked"]
+    assert "gsk_test_secret_key_12345" not in updated["api_key_masked"]
     assert updated["api_key_masked"].endswith("2345")
 
 

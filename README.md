@@ -2,7 +2,7 @@
 
 An enterprise-grade, full-stack AI data analytics and business intelligence platform that combines **deterministic statistical engines**, **interactive SQL execution**, **custom BI dashboarding**, and **safe LLM code generation**.
 
-Powered by a **FastAPI** backend, **React 18 + Vite + TypeScript** frontend, and **Hugging Face / Local Offline Analytic Engines**.
+Powered by a **FastAPI** backend, **React 18 + Vite + TypeScript** frontend, and **Groq / Local Offline Analytic Engines**.
 
 ---
 
@@ -140,7 +140,7 @@ npm run dev
 DataAnalystAgent/
 ├── backend/                      # FastAPI Backend Application
 │   ├── api/                      # Modular REST API Route Handlers
-│   │   ├── routes_config.py      # Hugging Face key & hyperparameter management
+│   │   ├── routes_config.py      # Groq key & hyperparameter management
 │   │   ├── routes_datasets.py    # Multi-format ingestion & pinned charts
 │   │   ├── routes_cleaning.py    # Quality scoring & column engineering
 │   │   ├── routes_explorer.py    # Paginated browse & distribution profiler
@@ -172,7 +172,7 @@ DataAnalystAgent/
 │   ├── ingestion.py              # File readers (CSV, Excel, JSON, SQLite, PDF, DOCX, OCR)
 │   ├── cleaning.py               # Auto-cleaning & quality scoring
 │   ├── executor.py               # AST sandbox validator & executor
-│   ├── llm_client.py             # Hugging Face client with quota auto-failover
+│   ├── llm_client.py             # Groq client with quota auto-failover
 │   ├── query_engine.py           # Smart fallback code generator & insights
 │   ├── langchain_query.py        # LangChain Intent Routing & Code Pipeline
 │   ├── document_rag.py           # LlamaIndex Document RAG
@@ -196,7 +196,7 @@ DataAnalystAgent/
 - **AST Security Barrier**: Submitted Python scripts are parsed into an Abstract Syntax Tree (AST) to detect and block forbidden AST nodes (`Import`, `ImportFrom`, attribute access to private/dunder members, dangerous built-ins).
 - **Restricted Namespace**: Code runs inside a restricted global namespace allowing only safe packages (`pandas`, `numpy`, `plotly`, `math`, `datetime`, `re`, `json`, `scikit-learn`).
 - **DataFrame Immutability**: Code executions operate on deep copies of in-memory DataFrames to prevent accidental destructive state corruption.
-- **Key Masking**: Hugging Face API keys are securely stored in backend memory sessions and masked in API responses (`****...tKdB`).
+- **Key Masking**: Groq API keys are securely stored in backend memory sessions and masked in API responses (`****...tKdB`).
 - **SQL Sanitization**: In-memory SQL execution allows only read-only `SELECT` queries, explicitly blocking destructive statements (`DROP`, `DELETE`, `TRUNCATE`, `ALTER`, `UPDATE`, `INSERT`).
 
 ---

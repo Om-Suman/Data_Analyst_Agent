@@ -43,7 +43,7 @@ for env_file in [Path(".env"), Path("../.env")]:
 
 app = FastAPI(
     title="Data Analyst Agent API",
-    description="Production-grade AI-powered data analytics API powered by FastAPI and Hugging Face models.",
+    description="Production-grade AI-powered data analytics API powered by FastAPI and Groq LLM models.",
     version="2.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
