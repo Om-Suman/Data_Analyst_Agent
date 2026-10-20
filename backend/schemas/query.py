@@ -41,6 +41,10 @@ class QueryHistoryItem(BaseModel):
     dataset: str
     route: Optional[str] = "dataframe_analysis"
     model_used: Optional[str] = ""
+    insights: Optional[str] = ""
+    code_blocks: Optional[list[str]] = []
+    execution_results: Optional[list[CodeExecutionResult]] = []
+    tool_result: Optional[dict[str, Any]] = None
 
 
 class QueryHistoryResponse(BaseModel):

@@ -16,6 +16,7 @@ import {
   ChevronUp,
   Table as TableIcon,
   BarChart3,
+  RotateCw,
 } from "lucide-react";
 import { useDataset } from "../context/DatasetContext";
 import { queryApi } from "../api/client";
@@ -35,6 +36,8 @@ export const AIQueryPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [copiedAnswer, setCopiedAnswer] = useState(false);
   const [showCode, setShowCode] = useState(true);
+
+  const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
 
   const promptSuggestions = [
     "What are the top 5 highest sales categories?",
@@ -57,11 +60,55 @@ export const AIQueryPage: React.FC = () => {
     fetchHistory();
   }, []);
 
+  const handleSelectHistoryItem = (item: QueryHistoryItem) => {
+    setSelectedHistoryId(item.id);
+    setQuestion(item.question);
+    setError(null);
+
+    const codeBlocks =
+      item.code_blocks && item.code_blocks.length > 0
+        ? item.code_blocks
+        : item.code
+        ? [item.code]
+        : [];
+
+    setCurrentResponse({
+      question: item.question,
+      route: item.route || "dataframe_analysis",
+      route_reason: "",
+      routing_source: "history",
+      model_used: item.model_used || "",
+      insights: item.insights || item.result_summary,
+      code_blocks: codeBlocks,
+      execution_results:
+        item.execution_results && item.execution_results.length > 0
+          ? item.execution_results
+          : item.code
+          ? [
+              {
+                code: item.code,
+                success: true,
+                execution_time: 0,
+                stdout: "",
+                error: null,
+                figures: [],
+                dataframes: {},
+              },
+            ]
+          : [],
+      tool_result: item.tool_result,
+      error: null,
+    });
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const handleAsk = async (qText?: string) => {
     const q = qText || question;
     if (!q.trim() || !hasDataset) return;
     setLoading(true);
     setError(null);
+    setSelectedHistoryId(null);
     try {
       const res = await queryApi.ask(q);
       setCurrentResponse(res);
@@ -411,25 +458,48 @@ export const AIQueryPage: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-2 max-h-80 overflow-y-auto">
-            {history.map((item) => (
-              <div
-                key={item.id}
-                onClick={() => handleAsk(item.question)}
-                className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/30 hover:bg-blue-50/60 dark:hover:bg-slate-800/70 border border-slate-200 dark:border-slate-700/50 cursor-pointer transition-all space-y-1 shadow-sm"
-              >
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-slate-900 dark:text-white truncate max-w-md">
-                    "{item.question}"
-                  </span>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
-                    {new Date(item.timestamp).toLocaleTimeString()}
-                  </span>
+            {history.map((item) => {
+              const isSelected = selectedHistoryId === item.id;
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => handleSelectHistoryItem(item)}
+                  className={`p-3 rounded-xl border cursor-pointer transition-all space-y-1 shadow-sm ${
+                    isSelected
+                      ? "bg-blue-50/80 dark:bg-blue-950/40 border-blue-400 dark:border-blue-500/50 ring-1 ring-blue-400/30"
+                      : "bg-slate-50 dark:bg-slate-800/30 hover:bg-blue-50/50 dark:hover:bg-slate-800/70 border-slate-200 dark:border-slate-700/50"
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-slate-900 dark:text-white truncate max-w-md flex items-center gap-1.5">
+                      {isSelected && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
+                      )}
+                      "{item.question}"
+                    </span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+                        {new Date(item.timestamp).toLocaleTimeString()}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAsk(item.question);
+                        }}
+                        className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                        title="Re-run this query"
+                      >
+                        <RotateCw className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-1">
+                    {item.result_summary}
+                  </p>
                 </div>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-1">
-                  {item.result_summary}
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

@@ -168,6 +168,10 @@ export interface QueryHistoryItem {
   dataset: string;
   route?: string;
   model_used?: string;
+  insights?: string;
+  code_blocks?: string[];
+  execution_results?: CodeExecutionResult[];
+  tool_result?: any;
 }
 
 export interface QueryHistoryResponse {

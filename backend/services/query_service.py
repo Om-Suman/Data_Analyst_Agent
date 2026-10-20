@@ -142,6 +142,10 @@ def execute_ai_query(
             dataset_name=active_name,
             route=route,
             model_used=model_used,
+            insights=insights_text,
+            code_blocks=code_blocks,
+            execution_results=exec_results,
+            tool_result=tool_result,
         )
 
     return {
@@ -171,6 +175,10 @@ def get_query_history(session: SessionState) -> list[dict[str, Any]]:
             "dataset": item.get("dataset", ""),
             "route": item.get("route", "dataframe_analysis"),
             "model_used": item.get("model_used", ""),
+            "insights": item.get("insights", item.get("result_summary", "")),
+            "code_blocks": item.get("code_blocks", []),
+            "execution_results": item.get("execution_results", []),
+            "tool_result": item.get("tool_result"),
         })
     return history
 
