@@ -34,7 +34,7 @@ def query_document(
         bundle = build_document_bundle(text_content, metadata={"name": active_name, **record.get("meta", {})})
         store_document_bundle(active_name, bundle, store=session.document_indexes)
 
-    api_key = session.config.get("hf_api_key", "")
+    api_key = session.config.get("groq_api_key", "")
     primary = session.config.get("primary_model", "")
     fallback = session.config.get("fallback_model", "")
 

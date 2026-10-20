@@ -34,22 +34,16 @@ export const SettingsPage: React.FC = () => {
   } | null>(null);
 
   const modelOptions = [
-    { label: "DeepSeek R1 (Recommended)", value: "deepseek-ai/DeepSeek-R1" },
-    { label: "Qwen 2.5 Coder 32B", value: "Qwen/Qwen2.5-Coder-32B-Instruct" },
-    {
-      label: "Llama 3.3 70B Instruct",
-      value: "meta-llama/Llama-3.3-70B-Instruct",
-    },
-    {
-      label: "Mistral 7B Instruct",
-      value: "mistralai/Mistral-7B-Instruct-v0.3",
-    },
+    { label: "Qwen 3.8 27B (Recommended)", value: "qwen/qwen3.8-27b" },
+    { label: "GPT-OSS 120B", value: "openai/gpt-oss-120b" },
+    { label: "GPT-OSS 20B", value: "openai/gpt-oss-20b" },
+    { label: "Allam 2 7B", value: "allam-2-7b" },
   ];
 
   useEffect(() => {
     if (config) {
-      setPrimaryModel(config.primary_model || "deepseek-ai/DeepSeek-R1");
-      setFallbackModel(config.fallback_model || "");
+      setPrimaryModel(config.primary_model || "qwen/qwen3.8-27b");
+      setFallbackModel(config.fallback_model || "openai/gpt-oss-120b");
       setMaxTokens(config.max_tokens || 2048);
       setTemperature(config.temperature ?? 0.3);
       setDefaultOutlier(config.default_outlier || "none");
@@ -62,7 +56,7 @@ export const SettingsPage: React.FC = () => {
     setMessage(null);
     try {
       await configApi.updateConfig({
-        hf_api_key: apiKey.trim() ? apiKey.trim() : undefined,
+        groq_api_key: apiKey.trim() ? apiKey.trim() : undefined,
         primary_model: primaryModel,
         fallback_model: fallbackModel,
         max_tokens: maxTokens,
@@ -107,11 +101,10 @@ export const SettingsPage: React.FC = () => {
       <div>
         <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
           <Settings className="h-5 w-5 text-blue-500 dark:text-blue-400" />
-          Hugging Face & System Settings
+          Groq & System Settings
         </h2>
         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Manage Hugging Face inference tokens, LLM model routing, inference
-          parameters, and session state
+          Manage Groq API keys, LLM model routing, inference parameters, and session state
         </p>
       </div>
 
@@ -132,13 +125,13 @@ export const SettingsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Hugging Face API Key Card */}
+      {/* Groq API Key Card */}
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-5 sm:p-6 space-y-4 shadow-sm">
         <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <Key className="h-4 w-4 text-amber-500 dark:text-amber-400" />
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-200">
-              Hugging Face API Token
+              Groq API Key
             </h3>
           </div>
           <span className="text-[11px] px-2.5 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-mono font-medium">
@@ -150,7 +143,7 @@ export const SettingsPage: React.FC = () => {
 
         <div className="space-y-2 text-xs">
           <label className="block text-slate-700 dark:text-slate-300 font-medium">
-            Update API Token
+            Update API Key
           </label>
           <div className="relative">
             <input
@@ -158,7 +151,7 @@ export const SettingsPage: React.FC = () => {
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder={
-                config?.has_api_key ? "Enter new key to overwrite..." : "hf_..."
+                config?.has_api_key ? "Enter new key to overwrite..." : "gsk_..."
               }
               className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-mono shadow-inner transition-all"
             />
@@ -211,7 +204,7 @@ export const SettingsPage: React.FC = () => {
               type="text"
               value={primaryModel}
               onChange={(e) => setPrimaryModel(e.target.value)}
-              placeholder="Or enter custom HF model identifier..."
+              placeholder="Or enter custom Groq model identifier..."
               className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 font-mono shadow-inner focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all placeholder-slate-400 dark:placeholder-slate-500"
             />
           </div>

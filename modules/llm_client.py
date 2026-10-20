@@ -1,7 +1,7 @@
 """
-LLM Client — Hugging Face Inference Providers
-Primary: Qwen/Qwen3-32B
-Fallback: deepseek-ai/DeepSeek-R1
+LLM Client — Groq Inference API
+Primary: llama-3.3-70b-versatile
+Fallback: deepseek-r1-distill-llama-70b
 """
 
 import os
@@ -11,21 +11,21 @@ import json
 import re
 from typing import Optional
 
-HF_URL = "https://router.huggingface.co/v1/chat/completions"
-PRIMARY_MODEL = "deepseek-ai/DeepSeek-R1"
-FALLBACK_MODEL = ""
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+PRIMARY_MODEL = "qwen/qwen3.8-27b"
+FALLBACK_MODEL = "openai/gpt-oss-120b"
 FATAL_STATUS_CODES = {400, 401, 402, 403, 404}
 
 
 def _load_key_from_files() -> str:
-    """Scan local .env for HF_API_KEY."""
+    """Scan local .env for GROQ_API_KEY."""
     for candidate in [".env", "../.env"]:
         if os.path.exists(candidate):
             try:
                 with open(candidate, "r", encoding="utf-8") as f:
                     for line in f:
                         line = line.strip()
-                        if line.startswith("HF_API_KEY") and "=" in line:
+                        if line.startswith("GROQ_API_KEY") and "=" in line:
                             val = line.split("=", 1)[1].strip().strip('"').strip("'")
                             if val:
                                 return val
@@ -38,7 +38,7 @@ def _resolve_api_key(api_key: Optional[str] = None) -> str:
     """Resolve API key from argument, environment, or disk configuration."""
     if api_key and str(api_key).strip():
         return str(api_key).strip()
-    env_key = os.environ.get("HF_API_KEY", "").strip()
+    env_key = os.environ.get("GROQ_API_KEY", "").strip()
     if env_key:
         return env_key
     file_key = _load_key_from_files()
@@ -87,7 +87,7 @@ def clean_response(text: str) -> str:
     return text.strip()
 
 
-def _call_hf(
+def _call_groq(
     model: str,
     messages: list,
     max_tokens: int,
@@ -99,7 +99,7 @@ def _call_hf(
     resolved_key = _resolve_api_key(api_key)
 
     if not resolved_key:
-        raise ValueError("No Hugging Face API key configured.")
+        raise ValueError("No Groq API key configured.")
 
     headers = {
         "Authorization": f"Bearer {resolved_key}",
@@ -112,13 +112,10 @@ def _call_hf(
         "max_tokens": max_tokens,
         "temperature": temperature,
         "stream": False,
-        "extra_body": {
-            "reasoning": False
-        }
     }
 
     resp = requests.post(
-        HF_URL,
+        GROQ_URL,
         headers=headers,
         json=payload,
         timeout=timeout,
@@ -137,7 +134,7 @@ def _call_hf(
 
         message = data["choices"][0]["message"]
 
-        # Ignore DeepSeek reasoning_content
+        # Ignore reasoning_content if present
         content = message.get("content", "")
 
         return clean_response(content)
@@ -148,16 +145,15 @@ def _call_hf(
 def _friendly_http_error(status: int, body: str) -> str:
     if status == 402:
         return (
-            "Hugging Face Inference Providers rejected the request because "
-            "your monthly included credits are depleted. Add prepaid credits, "
-            "upgrade to Pro, or switch to a local/free provider before running AI queries."
+            "Groq API rejected the request because "
+            "your credits are depleted. Check your Groq billing or switch providers."
         )
     if status == 401:
-        return "Hugging Face rejected the API key. Check or replace your HF_API_KEY."
+        return "Groq rejected the API key. Check or replace your GROQ_API_KEY."
     if status == 403:
-        return "Hugging Face denied access to this model/provider for your account."
+        return "Groq denied access to this model for your account."
     if status == 404:
-        return "The configured Hugging Face model was not found. Check the model name in Settings."
+        return "The configured Groq model was not found. Check the model name in Settings."
     return f"HTTP {status}: {body}"
 
 
@@ -203,7 +199,7 @@ def query_llm(
 
             try:
 
-                text = _call_hf(
+                text = _call_groq(
                     model=model,
                     messages=messages,
                     max_tokens=max_tokens,

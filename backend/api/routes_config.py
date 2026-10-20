@@ -20,12 +20,12 @@ def _mask_api_key(key: str) -> str:
 @router.get("/config", response_model=ConfigResponse)
 def get_config(session: SessionState = Depends(get_current_session)):
     cfg = session.config
-    key = cfg.get("hf_api_key", "")
+    key = cfg.get("groq_api_key", "")
     return ConfigResponse(
         has_api_key=bool(key and key.strip()),
         api_key_masked=_mask_api_key(key),
-        primary_model=cfg.get("primary_model", "deepseek-ai/DeepSeek-R1"),
-        fallback_model=cfg.get("fallback_model", ""),
+        primary_model=cfg.get("primary_model", "qwen/qwen3.8-27b"),
+        fallback_model=cfg.get("fallback_model", "openai/gpt-oss-120b"),
         theme=cfg.get("theme", "dark"),
         max_tokens=int(cfg.get("max_tokens", 2048)),
         temperature=float(cfg.get("temperature", 0.3)),
@@ -42,8 +42,8 @@ def update_config(
     session: SessionState = Depends(get_current_session),
 ):
     cfg = session.config
-    if req.hf_api_key is not None and req.hf_api_key.strip():
-        cfg["hf_api_key"] = req.hf_api_key.strip()
+    if req.groq_api_key is not None and req.groq_api_key.strip():
+        cfg["groq_api_key"] = req.groq_api_key.strip()
     if req.primary_model is not None and req.primary_model.strip():
         cfg["primary_model"] = req.primary_model.strip()
     if req.fallback_model is not None:

@@ -32,9 +32,9 @@ def get_ai_business_insights(session: SessionState, max_tokens: Optional[int] = 
     if df is None:
         raise ValueError("No active dataset.")
 
-    api_key = session.config.get("hf_api_key", "")
+    api_key = session.config.get("groq_api_key", "")
     if not api_key:
-        raise ValueError("Hugging Face API key is not configured. Please set your API key in Settings.")
+        raise ValueError("Groq API key is not configured. Please set your API key in Settings.")
 
     effective_tokens = max_tokens or session.config.get("max_tokens", 1500)
     data = generate_llm_insights(df, max_tokens=effective_tokens)

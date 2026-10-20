@@ -85,10 +85,6 @@ STOP_WORDS = {
 }
 
 
-def llamaindex_available() -> bool:
-    return LLAMAINDEX_AVAILABLE
-
-
 def _split_text(text: str, chunk_size: int = 1200, overlap: int = 150) -> list[str]:
     text = (text or "").strip()
     if not text:

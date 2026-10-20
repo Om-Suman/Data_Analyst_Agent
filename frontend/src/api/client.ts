@@ -58,7 +58,7 @@ export const configApi = {
     return res.data;
   },
   updateConfig: async (
-    data: Partial<ConfigState> & { hf_api_key?: string },
+    data: Partial<ConfigState> & { groq_api_key?: string },
   ): Promise<ConfigState> => {
     const res = await api.post<ConfigState>("/config", data);
     return res.data;

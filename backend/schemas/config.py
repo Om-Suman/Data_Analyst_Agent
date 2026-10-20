@@ -6,8 +6,8 @@ from pydantic import BaseModel, Field
 class ConfigResponse(BaseModel):
     has_api_key: bool = Field(description="Whether a valid API key is configured")
     api_key_masked: str = Field(description="Masked API key (e.g. *******1234)")
-    primary_model: str = Field(default="deepseek-ai/DeepSeek-R1")
-    fallback_model: str = Field(default="")
+    primary_model: str = Field(default="qwen/qwen3.8-27b")
+    fallback_model: str = Field(default="openai/gpt-oss-120b")
     theme: str = Field(default="dark")
     max_tokens: int = Field(default=2048)
     temperature: float = Field(default=0.3)
@@ -18,7 +18,7 @@ class ConfigResponse(BaseModel):
 
 
 class ConfigUpdateRequest(BaseModel):
-    hf_api_key: Optional[str] = None
+    groq_api_key: Optional[str] = None
     primary_model: Optional[str] = None
     fallback_model: Optional[str] = None
     theme: Optional[str] = None

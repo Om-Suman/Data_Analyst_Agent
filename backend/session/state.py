@@ -38,9 +38,9 @@ class SessionState:
 
         # Configuration defaults
         self.config: dict[str, Any] = {
-            "hf_api_key": _resolve_api_key(),
-            "primary_model": os.environ.get("PRIMARY_MODEL", "deepseek-ai/DeepSeek-R1"),
-            "fallback_model": os.environ.get("FALLBACK_MODEL", ""),
+            "groq_api_key": _resolve_api_key(),
+            "primary_model": os.environ.get("PRIMARY_MODEL", "qwen/qwen3.8-27b"),
+            "fallback_model": os.environ.get("FALLBACK_MODEL", "openai/gpt-oss-120b"),
             "theme": "dark",
             "max_tokens": int(os.environ.get("MAX_TOKENS", 2048)),
             "temperature": float(os.environ.get("TEMPERATURE", 0.3)),
@@ -195,6 +195,9 @@ class SessionState:
         execution_results: Optional[list] = None,
         route: Optional[str] = None,
         model_used: Optional[str] = None,
+        insights: Optional[str] = None,
+        code_blocks: Optional[list[str]] = None,
+        tool_result: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
         with self._lock:
             self.touch()
@@ -207,6 +210,10 @@ class SessionState:
                 "dataset": dataset_name,
                 "route": route or "dataframe_analysis",
                 "model_used": model_used or "",
+                "insights": insights or result_summary,
+                "code_blocks": code_blocks or [],
+                "execution_results": execution_results or [],
+                "tool_result": tool_result,
             }
             self.query_history.append(entry)
             return entry
