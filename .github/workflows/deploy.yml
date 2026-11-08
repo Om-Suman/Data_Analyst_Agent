@@ -34,7 +34,9 @@ jobs:
         with:
           context: .
           push: true
-          tags: acrdataagent.azurecr.io/data-analyst-agent:latest
+          tags: |
+            acrdataagent.azurecr.io/data-analyst-agent:latest
+            acrdataagent.azurecr.io/data-analyst-agent:${{ github.sha }}
 
       - name: Deploy to Azure Container Apps
         uses: azure/container-apps-deploy-action@v1
@@ -42,4 +44,4 @@ jobs:
           acrName: acrdataagent
           containerAppName: data-analyst-agent
           resourceGroup: rg-dataanalyst-prod
-          imageToDeploy: acrdataagent.azurecr.io/data-analyst-agent:latest
+          imageToDeploy: acrdataagent.azurecr.io/data-analyst-agent:${{ github.sha }}
