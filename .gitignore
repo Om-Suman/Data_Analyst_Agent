@@ -109,3 +109,7 @@ temp/
 *.tmp
 *.bak
 *.swp
+# AI Agent & Critique Caches
+.impeccable/
+.agents/
+frontend/tests/

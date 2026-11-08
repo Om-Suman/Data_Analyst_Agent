@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useDataset } from "../context/DatasetContext";
 import { datasetApi } from "../api/client";
+import { uploadFeedback } from "../utils/uploadFeedback";
 
 export const UploadPage: React.FC = () => {
   const { datasets, activeDatasetName, setActiveDataset, refreshDatasets } =
@@ -22,30 +23,50 @@ export const UploadPage: React.FC = () => {
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const operationRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFiles = async (files: FileList | File[]) => {
-    if (!files || files.length === 0) return;
+    if (!files || files.length === 0 || operationRef.current) return;
+    const unsupported = Array.from(files).filter(
+      (file) =>
+        !/\.(csv|xlsx?|json|sqlite|db|pdf|docx|txt|png|jpe?g)$/i.test(
+          file.name,
+        ),
+    );
+    if (unsupported.length) {
+      setMessage({
+        type: "error",
+        text: `Unsupported file type: ${unsupported.map((file) => file.name).join(", ")}. Choose one of the formats listed below.`,
+      });
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+    operationRef.current = true;
     setUploading(true);
     setMessage(null);
     try {
       const res = await datasetApi.uploadFiles(files);
-      setMessage({
-        type: "success",
-        text: `Successfully uploaded ${res.processed?.length || 1} file(s)!`,
-      });
+      setMessage(uploadFeedback(res));
       await refreshDatasets();
     } catch (err: any) {
       setMessage({
         type: "error",
-        text: err.response?.data?.detail || "Failed to upload files.",
+        text:
+          err.response?.data?.detail ||
+          "Could not upload the files. Check your connection and choose the files again to retry.",
       });
     } finally {
+      operationRef.current = false;
       setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
   const handleSample = async (name: string) => {
+    if (operationRef.current) return;
+    operationRef.current = true;
+    setUploading(true);
     setMessage(null);
     try {
       await datasetApi.loadSample(name);
@@ -54,8 +75,13 @@ export const UploadPage: React.FC = () => {
     } catch (err: any) {
       setMessage({
         type: "error",
-        text: err.response?.data?.detail || "Failed to load sample.",
+        text:
+          err.response?.data?.detail ||
+          "Could not load the sample. Try again or choose a file to upload.",
       });
+    } finally {
+      operationRef.current = false;
+      setUploading(false);
     }
   };
 
@@ -73,7 +99,7 @@ export const UploadPage: React.FC = () => {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-          Upload & Ingest Data
+          Upload data
         </h2>
         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
           Upload tabular datasets (CSV, Excel, JSON, SQLite) or unstructured
@@ -83,6 +109,7 @@ export const UploadPage: React.FC = () => {
 
       {message && (
         <div
+          role={message.type === "error" ? "alert" : "status"}
           className={`p-4 rounded-xl flex items-center gap-3 text-xs font-medium border ${
             message.type === "success"
               ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300"
@@ -110,7 +137,6 @@ export const UploadPage: React.FC = () => {
           setIsDragging(false);
           if (e.dataTransfer.files) handleFiles(e.dataTransfer.files);
         }}
-        onClick={() => fileInputRef.current?.click()}
         className={`border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all ${
           isDragging
             ? "border-blue-500 bg-blue-50 dark:bg-blue-500/10"
@@ -118,6 +144,8 @@ export const UploadPage: React.FC = () => {
         }`}
       >
         <input
+          aria-label="Choose data files"
+          disabled={uploading}
           ref={fileInputRef}
           type="file"
           multiple
@@ -128,14 +156,22 @@ export const UploadPage: React.FC = () => {
           }}
         />
         <div className="flex flex-col items-center justify-center space-y-3">
+          <button
+            type="button"
+            disabled={uploading}
+            onClick={() => fileInputRef.current?.click()}
+            className="min-h-11 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold disabled:opacity-50"
+          >
+            Choose files
+          </button>
           <div className="h-14 w-14 rounded-2xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-sm">
             <UploadCloud className="h-7 w-7" />
           </div>
           <div className="space-y-1">
             <p className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white">
-              {uploading
-                ? "Processing uploaded files..."
-                : "Click to upload or drag & drop files here"}
+              <span role="status">
+                {uploading ? "Processing files…" : "Drag and drop files here"}
+              </span>
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Supports CSV, Excel, JSON, SQLite, PDF, DOCX, TXT, and Images
@@ -150,9 +186,11 @@ export const UploadPage: React.FC = () => {
           Or Start with Pre-Loaded Demo Datasets
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div
+          <button
+            type="button"
+            disabled={uploading}
             onClick={() => handleSample("Sales Data")}
-            className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 hover:border-blue-400 dark:hover:border-blue-500/40 hover:bg-blue-50/30 dark:hover:bg-slate-800/50 shadow-sm hover:shadow-md cursor-pointer transition-all space-y-2"
+            className="text-left disabled:opacity-50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 hover:border-blue-400 dark:hover:border-blue-500/40 hover:bg-blue-50/30 dark:hover:bg-slate-800/50 shadow-sm hover:shadow-md cursor-pointer transition-all space-y-2"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
@@ -164,11 +202,13 @@ export const UploadPage: React.FC = () => {
               500 daily sales transactions across products and regions with
               profit margins.
             </p>
-          </div>
+          </button>
 
-          <div
+          <button
+            type="button"
+            disabled={uploading}
             onClick={() => handleSample("Employee Data")}
-            className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 hover:border-emerald-400 dark:hover:border-emerald-500/40 hover:bg-emerald-50/30 dark:hover:bg-slate-800/50 shadow-sm hover:shadow-md cursor-pointer transition-all space-y-2"
+            className="text-left disabled:opacity-50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 hover:border-emerald-400 dark:hover:border-emerald-500/40 hover:bg-emerald-50/30 dark:hover:bg-slate-800/50 shadow-sm hover:shadow-md cursor-pointer transition-all space-y-2"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
@@ -180,11 +220,13 @@ export const UploadPage: React.FC = () => {
               300 employee records with salaries, departments, experience, and
               remote status.
             </p>
-          </div>
+          </button>
 
-          <div
+          <button
+            type="button"
+            disabled={uploading}
             onClick={() => handleSample("Finance Data")}
-            className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 hover:border-amber-400 dark:hover:border-amber-500/40 hover:bg-amber-50/30 dark:hover:bg-slate-800/50 shadow-sm hover:shadow-md cursor-pointer transition-all space-y-2"
+            className="text-left disabled:opacity-50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 hover:border-amber-400 dark:hover:border-amber-500/40 hover:bg-amber-50/30 dark:hover:bg-slate-800/50 shadow-sm hover:shadow-md cursor-pointer transition-all space-y-2"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
@@ -196,7 +238,7 @@ export const UploadPage: React.FC = () => {
               365 daily stock price movements with volume, high, low, and
               closing values.
             </p>
-          </div>
+          </button>
         </div>
       </div>
 
@@ -270,6 +312,8 @@ export const UploadPage: React.FC = () => {
                         <button
                           onClick={() => handleDelete(d.name)}
                           className="p-1.5 rounded hover:bg-rose-50 dark:hover:bg-rose-500/20 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
+                          aria-label={`Delete ${d.name}`}
+                          disabled={uploading}
                           title="Delete dataset"
                         >
                           <Trash2 className="h-3.5 w-3.5" />

@@ -44,10 +44,17 @@
     line-height: 1.6;
     letter-spacing: -0.011em;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-    transition: background-color 0.2s ease, color 0.2s ease;
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     letter-spacing: -0.025em;
     font-weight: 700;
   }
@@ -175,3 +182,29 @@
   fill: #3b82f6 !important;
 }
 
+/* Shared interaction states for keyboard, touch, and reduced-motion use. */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+::selection {
+  background: #bfdbfe;
+  color: #0f172a;
+}
+input,
+textarea {
+  caret-color: var(--primary);
+}
+button:disabled {
+  cursor: not-allowed;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,45 @@
+name: Deploy to Azure Container Apps
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Log in to Azure Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: acrdataagent.azurecr.io
+          username: acrdataagent
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: acrdataagent.azurecr.io/data-analyst-agent:latest
+
+      - name: Deploy to Azure Container Apps
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          acrName: acrdataagent
+          containerAppName: data-analyst-agent
+          resourceGroup: rg-dataanalyst-prod
+          imageToDeploy: acrdataagent.azurecr.io/data-analyst-agent:latest

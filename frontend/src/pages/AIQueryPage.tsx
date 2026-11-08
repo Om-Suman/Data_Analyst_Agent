@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Sparkles,
   Send,
@@ -27,7 +28,13 @@ import { MarkdownRenderer } from "../components/MarkdownRenderer";
 
 export const AIQueryPage: React.FC = () => {
   const { activeDataset, hasDataset } = useDataset();
-  const [question, setQuestion] = useState("");
+  const [searchParams] = useSearchParams();
+  const incomingPrompt = searchParams.get("prompt") || "";
+  const sourceDataset = searchParams.get("dataset");
+  const [question, setQuestion] = useState(incomingPrompt);
+  useEffect(() => {
+    setQuestion(incomingPrompt);
+  }, [incomingPrompt]);
   const [loading, setLoading] = useState(false);
   const [currentResponse, setCurrentResponse] = useState<QueryResponse | null>(
     null,
@@ -37,7 +44,9 @@ export const AIQueryPage: React.FC = () => {
   const [copiedAnswer, setCopiedAnswer] = useState(false);
   const [showCode, setShowCode] = useState(true);
 
-  const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
+  const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(
+    null,
+  );
 
   const promptSuggestions = [
     "What are the top 5 highest sales categories?",
@@ -69,8 +78,8 @@ export const AIQueryPage: React.FC = () => {
       item.code_blocks && item.code_blocks.length > 0
         ? item.code_blocks
         : item.code
-        ? [item.code]
-        : [];
+          ? [item.code]
+          : [];
 
     setCurrentResponse({
       question: item.question,
@@ -84,23 +93,23 @@ export const AIQueryPage: React.FC = () => {
         item.execution_results && item.execution_results.length > 0
           ? item.execution_results
           : item.code
-          ? [
-              {
-                code: item.code,
-                success: true,
-                execution_time: 0,
-                stdout: "",
-                error: null,
-                figures: [],
-                dataframes: {},
-              },
-            ]
-          : [],
+            ? [
+                {
+                  code: item.code,
+                  success: true,
+                  execution_time: 0,
+                  stdout: "",
+                  error: null,
+                  figures: [],
+                  dataframes: {},
+                },
+              ]
+            : [],
       tool_result: item.tool_result,
       error: null,
     });
 
-    const mainEl = document.querySelector('main');
+    const mainEl = document.querySelector("main");
     if (mainEl) {
       mainEl.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -189,18 +198,26 @@ export const AIQueryPage: React.FC = () => {
         </p>
       </div>
 
+      {incomingPrompt && (
+        <p role="status" className="text-sm text-slate-700 dark:text-slate-300">
+          {sourceDataset && sourceDataset !== activeDataset?.name
+            ? `This prompt was selected for ${sourceDataset}. The active dataset is ${activeDataset?.name}; check the dataset before running.`
+            : `Question prepared for ${activeDataset?.name}. Edit it, then choose Query to run.`}
+        </p>
+      )}
       {/* Query Input Box */}
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4 sm:p-5 space-y-3 shadow-sm">
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="text"
+            aria-label="Your analytical question"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") handleAsk();
             }}
             placeholder="Ask anything (e.g. 'What are the top 5 highest sales categories?')..."
-            className="flex-1 bg-slate-50 dark:bg-slate-950/80 border border-slate-300 dark:border-slate-700/80 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-inner transition-all"
+            className="flex-1 min-w-0 bg-slate-50 dark:bg-slate-950/80 border border-slate-300 dark:border-slate-700/80 rounded-xl px-4 py-3 text-base sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-inner transition-all"
           />
           <button
             onClick={() => handleAsk()}
