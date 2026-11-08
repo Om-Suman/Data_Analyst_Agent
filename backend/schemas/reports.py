@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 
 class HTMLReportRequest(BaseModel):
-    include_sample: bool = Field(default=True)
+    include_sample: bool = Field(default=False)
     include_stats: bool = Field(default=True)
     include_insights: bool = Field(default=True)
 

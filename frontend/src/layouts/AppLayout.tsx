@@ -3,12 +3,20 @@ import { Outlet, useLocation } from "react-router-dom";
 import { Sidebar } from "../components/Sidebar";
 import { Navbar } from "../components/Navbar";
 import { AICopilotDrawer } from "../components/AICopilotDrawer";
+import { useDataset } from "../context/DatasetContext";
+
+const datasetRoutes = new Set(["/cleaning", "/explorer", "/sql", "/query", "/document", "/visualizations", "/insights", "/forecasting", "/anomalies", "/reports"]);
 
 export const AppLayout: React.FC = () => {
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const { activeDataset, loading } = useDataset();
+  const scoped = datasetRoutes.has(location.pathname);
+  const datasetKey = scoped && activeDataset
+    ? JSON.stringify([activeDataset.name, activeDataset.version, activeDataset.uploaded_at])
+    : undefined;
   const mainRef = useRef<HTMLElement>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const menuRef = useRef<HTMLButtonElement>(null);
@@ -90,7 +98,12 @@ export const AppLayout: React.FC = () => {
           ref={mainRef}
           className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto"
         >
-          <Outlet />
+          {scoped && activeDataset && !loading && (
+            <p className="mb-4 break-words text-sm text-slate-600 dark:text-slate-300">
+              Working with <strong>{activeDataset.name}</strong> · Version {activeDataset.version}
+            </p>
+          )}
+          {scoped && loading ? <p role="status">Loading your workspace…</p> : <Outlet key={datasetKey} />}
         </main>
       </div>
       <AICopilotDrawer

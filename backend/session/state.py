@@ -30,9 +30,7 @@ class SessionState:
         self.query_history: list[dict[str, Any]] = []
         self.document_indexes: dict[str, dict[str, Any]] = {}
         self.cleaning_log: list[dict[str, Any]] = []
-        self.last_insights: dict[str, Any] = {}
-        self.cached_forecast: Optional[Any] = None
-        self.cached_anomaly: Optional[Any] = None
+        self.analysis_cache: dict[str, tuple[tuple[Any, ...], Any]] = {}
         self.viz_history: list[dict[str, Any]] = []
         self.pinned_charts: list[dict[str, Any]] = []
 
@@ -41,7 +39,7 @@ class SessionState:
             "groq_api_key": _resolve_api_key(),
             "primary_model": os.environ.get("PRIMARY_MODEL", "qwen/qwen3.8-27b"),
             "fallback_model": os.environ.get("FALLBACK_MODEL", "openai/gpt-oss-120b"),
-            "theme": "dark",
+            "theme": "light",
             "max_tokens": int(os.environ.get("MAX_TOKENS", 2048)),
             "temperature": float(os.environ.get("TEMPERATURE", 0.3)),
             "default_outlier": "none",
@@ -74,6 +72,26 @@ class SessionState:
                 return None
             return self.datasets[self.active_dataset]
 
+    @staticmethod
+    def dataset_identity(record: dict[str, Any]) -> tuple[Any, ...]:
+        return (record["name"], record["version"], record["uploaded_at"])
+
+    def cache_analysis(self, kind: str, identity: tuple[Any, ...], result: Any) -> None:
+        with self._lock:
+            record = self.get_active_record()
+            if record and self.dataset_identity(record) == identity:
+                self.analysis_cache[kind] = (identity, result)
+
+    def get_cached_analysis(self, kind: str, identity: Optional[tuple[Any, ...]] = None) -> Any:
+        with self._lock:
+            record = self.get_active_record()
+            cached = self.analysis_cache.get(kind)
+            if record and cached:
+                source = identity if identity is not None else self.dataset_identity(record)
+                if cached[0] == source:
+                    return cached[1]
+            return None
+
     def register_dataset(
         self,
         name: str,
@@ -84,6 +102,8 @@ class SessionState:
         with self._lock:
             self.touch()
             meta = meta or {}
+            previous_versions = self.dataset_versions.get(name, [])
+            next_version = max((item["version"] for item in previous_versions), default=0) + 1
             record = {
                 "df": df,
                 "name": name,
@@ -93,7 +113,7 @@ class SessionState:
                 "cols": int(len(df.columns)),
                 "meta": meta,
                 "text_content": None,
-                "version": 1,
+                "version": next_version,
                 "transformations": [],
             }
             self.datasets[name] = record
@@ -153,7 +173,8 @@ class SessionState:
             record = self.datasets.get(name)
             if not record or record.get("df") is None:
                 return
-            record["version"] += 1
+            newest = max((item["version"] for item in self.dataset_versions.get(name, [])), default=0)
+            record["version"] = max(record["version"], newest) + 1
             self._snapshot_version(name, description)
 
     def update_dataset(self, name: str, df: pd.DataFrame, description: str = ""):
@@ -198,6 +219,7 @@ class SessionState:
         insights: Optional[str] = None,
         code_blocks: Optional[list[str]] = None,
         tool_result: Optional[dict[str, Any]] = None,
+        dataset_version: Optional[int] = None,
     ) -> dict[str, Any]:
         with self._lock:
             self.touch()
@@ -208,6 +230,7 @@ class SessionState:
                 "code": code,
                 "result_summary": result_summary,
                 "dataset": dataset_name,
+                "dataset_version": dataset_version,
                 "route": route or "dataframe_analysis",
                 "model_used": model_used or "",
                 "insights": insights or result_summary,
@@ -218,7 +241,7 @@ class SessionState:
             self.query_history.append(entry)
             return entry
 
-    def add_pinned_chart(self, title: str, chart_type: str, figure_spec: dict[str, Any], source_page: str = "Visualizations", notes: str = "") -> dict[str, Any]:
+    def add_pinned_chart(self, title: str, chart_type: str, figure_spec: dict[str, Any], source_page: str = "Visualizations", notes: str = "", dataset_name: Optional[str] = None, dataset_version: Optional[int] = None) -> dict[str, Any]:
         with self._lock:
             self.touch()
             item = {
@@ -229,6 +252,8 @@ class SessionState:
                 "pinned_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "source_page": source_page,
                 "notes": notes,
+                "dataset_name": dataset_name,
+                "dataset_version": dataset_version,
             }
             self.pinned_charts.insert(0, item)
             return item
@@ -258,9 +283,7 @@ class SessionState:
             self.query_history.clear()
             self.document_indexes.clear()
             self.cleaning_log.clear()
-            self.last_insights.clear()
-            self.cached_forecast = None
-            self.cached_anomaly = None
+            self.analysis_cache.clear()
             self.viz_history.clear()
             self.pinned_charts.clear()
             self.touch()

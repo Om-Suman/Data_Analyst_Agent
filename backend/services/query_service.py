@@ -108,6 +108,7 @@ def execute_ai_query(
         raise ValueError(f"Dataset '{active_name}' not found in session.")
 
     df = record.get("df")
+    dataset_version = record.get("version")
     is_document = bool(record.get("text_content"))
 
     effective_max_tokens = max_tokens or session.config.get("max_tokens", 2048)
@@ -115,7 +116,10 @@ def execute_ai_query(
     raw_result = run_routed_query(
         question=question,
         df=df,
-        history=session.query_history,
+        history=[
+            item for item in session.query_history
+            if item.get("dataset") == active_name and item.get("dataset_version") == dataset_version
+        ],
         max_tokens=effective_max_tokens,
         document_name=active_name if is_document else None,
     )
@@ -140,6 +144,7 @@ def execute_ai_query(
             code=code_summary,
             result_summary=insights_text[:500],
             dataset_name=active_name,
+            dataset_version=dataset_version,
             route=route,
             model_used=model_used,
             insights=insights_text,
@@ -173,6 +178,7 @@ def get_query_history(session: SessionState) -> list[dict[str, Any]]:
             "code": item.get("code", ""),
             "result_summary": item.get("result_summary", ""),
             "dataset": item.get("dataset", ""),
+            "dataset_version": item.get("dataset_version"),
             "route": item.get("route", "dataframe_analysis"),
             "model_used": item.get("model_used", ""),
             "insights": item.get("insights", item.get("result_summary", "")),

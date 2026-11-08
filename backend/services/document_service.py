@@ -30,8 +30,9 @@ def query_document(
 
     # Ensure document is indexed
     bundle = get_document_bundle(active_name, store=session.document_indexes)
-    if not bundle:
-        bundle = build_document_bundle(text_content, metadata={"name": active_name, **record.get("meta", {})})
+    if not bundle or bundle.get("text") != text_content:
+        metadata = {key: value for key, value in record.get("meta", {}).items() if key != "content"}
+        bundle = build_document_bundle(text_content, metadata={**metadata, "name": active_name})
         store_document_bundle(active_name, bundle, store=session.document_indexes)
 
     api_key = session.config.get("groq_api_key", "")

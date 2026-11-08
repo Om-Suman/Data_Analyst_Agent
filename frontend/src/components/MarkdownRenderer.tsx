@@ -341,12 +341,12 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     // Blockquote
     if (trimmed.startsWith(">")) {
       blocks.push(
-        <div
+        <blockquote
           key={blockKey++}
-          className="my-2 p-3 rounded-xl bg-blue-50/70 dark:bg-blue-950/20 border-l-4 border-blue-500 text-xs text-slate-700 dark:text-slate-300 leading-relaxed"
+          className="my-2 border-l border-blue-500 py-1 pl-3 text-sm text-slate-700 dark:text-slate-300 leading-relaxed"
         >
           {renderInline(trimmed.replace(/^>\s*/, ""))}
-        </div>,
+        </blockquote>,
       );
       continue;
     }

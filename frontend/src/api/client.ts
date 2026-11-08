@@ -53,6 +53,10 @@ api.interceptors.request.use((config) => {
 
 // Config & Settings API
 export const configApi = {
+  checkConnection: async (): Promise<{ unavailable_models: string[] }> => {
+    const res = await api.get<{ unavailable_models: string[] }>("/config/connection");
+    return res.data;
+  },
   getConfig: async (): Promise<ConfigState> => {
     const res = await api.get<ConfigState>("/config");
     return res.data;
@@ -302,6 +306,7 @@ export const anomalyApi = {
     contamination?: number;
     threshold?: number;
     factor?: number;
+    columns?: string[];
   }): Promise<AnomalyResponse> => {
     const res = await api.post<AnomalyResponse>("/anomalies/run", req);
     return res.data;

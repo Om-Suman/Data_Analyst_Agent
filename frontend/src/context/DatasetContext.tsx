@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useState,
   useCallback,
+  useRef,
 } from "react";
 import {
   ConfigState,
@@ -13,6 +14,7 @@ import {
   PinChartRequest,
 } from "../types";
 import { configApi, datasetApi } from "../api/client";
+import { useToast } from "../components/Toast";
 
 interface DatasetContextType {
   datasets: DatasetItem[];
@@ -47,6 +49,9 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({
   const [pinnedCharts, setPinnedCharts] = useState<PinnedChartItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [previewLoading, setPreviewLoading] = useState<boolean>(false);
+  const previewRequest = useRef(0);
+  const changingDataset = useRef(false);
+  const { error: toastError } = useToast();
 
   const refreshConfig = useCallback(async () => {
     try {
@@ -83,22 +88,26 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({
     [refreshPinnedCharts],
   );
 
-  const refreshPreview = useCallback(async () => {
-    if (!activeDatasetName) {
+  const fetchPreview = useCallback(async (name: string | null) => {
+    const request = ++previewRequest.current;
+    if (!name) {
       setPreview(null);
+      setPreviewLoading(false);
       return;
     }
     setPreviewLoading(true);
     try {
       const data = await datasetApi.getPreview(50);
-      setPreview(data);
+      if (request === previewRequest.current) setPreview(data.name === name ? data : null);
     } catch (err) {
       console.error("Failed to load dataset preview", err);
-      setPreview(null);
+      if (request === previewRequest.current) setPreview(null);
     } finally {
-      setPreviewLoading(false);
+      if (request === previewRequest.current) setPreviewLoading(false);
     }
-  }, [activeDatasetName]);
+  }, []);
+
+  const refreshPreview = useCallback(() => fetchPreview(activeDatasetName), [activeDatasetName, fetchPreview]);
 
   const refreshDatasets = useCallback(async () => {
     setLoading(true);
@@ -106,34 +115,30 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({
       const res = await datasetApi.listDatasets();
       setDatasets(res.datasets);
       setActiveDatasetNameState(res.active_dataset);
-      if (res.active_dataset) {
-        try {
-          const prev = await datasetApi.getPreview(50);
-          setPreview(prev);
-        } catch {
-          setPreview(null);
-        }
-      } else {
-        setPreview(null);
-      }
+      await fetchPreview(res.active_dataset);
     } catch (err) {
       console.error("Failed to list datasets", err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchPreview]);
 
   const setActiveDataset = useCallback(
     async (name: string) => {
+      if (changingDataset.current) return;
+      changingDataset.current = true;
+      setLoading(true);
       try {
         await datasetApi.setActive(name);
-        setActiveDatasetNameState(name);
         await refreshDatasets();
       } catch (err) {
-        console.error("Failed to set active dataset", err);
+        toastError("Could not switch datasets", "Try selecting the dataset again.");
+      } finally {
+        changingDataset.current = false;
+        setLoading(false);
       }
     },
-    [refreshDatasets],
+    [refreshDatasets, toastError],
   );
 
   useEffect(() => {
@@ -142,28 +147,9 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({
     refreshPinnedCharts();
   }, [refreshDatasets, refreshConfig, refreshPinnedCharts]);
 
-  useEffect(() => {
-    refreshPreview();
-  }, [activeDatasetName, refreshPreview]);
-
-  const baseActive = datasets.find((d) => d.name === activeDatasetName) || null;
-  const activeDataset = baseActive
-    ? {
-        ...baseActive,
-        version:
-          preview?.name === baseActive.name && preview.version
-            ? preview.version
-            : baseActive.version,
-        rows:
-          preview?.name === baseActive.name && preview.rows
-            ? preview.rows
-            : baseActive.rows,
-        cols:
-          preview?.name === baseActive.name && preview.cols
-            ? preview.cols
-            : baseActive.cols,
-      }
-    : null;
+  const activeDataset = datasets.find((d) => d.name === activeDatasetName) || null;
+  const currentPreview = preview?.name === activeDataset?.name &&
+    (preview?.version == null || preview.version === activeDataset?.version) ? preview : null;
   const hasDataset = Boolean(activeDataset);
 
   return (
@@ -172,7 +158,7 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({
         datasets,
         activeDataset,
         activeDatasetName,
-        preview,
+        preview: currentPreview,
         config,
         pinnedCharts,
         loading,

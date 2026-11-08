@@ -16,7 +16,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   menuRef,
   mobileOpen,
 }) => {
-  const { datasets, activeDatasetName, setActiveDataset } = useDataset();
+  const { datasets, activeDatasetName, setActiveDataset, loading } = useDataset();
   const { theme, toggleTheme } = useTheme();
   return (
     <header className="sticky top-0 z-20 flex min-h-16 items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0d1322] px-3 sm:px-6 py-2">
@@ -39,7 +39,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <select
             id="active-dataset"
             value={activeDatasetName || ""}
-            disabled={datasets.length === 0}
+            disabled={loading || datasets.length === 0}
             onChange={(e) => {
               if (e.target.value) setActiveDataset(e.target.value);
             }}

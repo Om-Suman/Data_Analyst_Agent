@@ -50,7 +50,8 @@ def run_and_apply_cleaning(
     session: SessionState = Depends(get_current_session),
 ):
     try:
-        report_data = apply_cleaning(session, req.model_dump())
+        with session._lock:
+            report_data = apply_cleaning(session, req.model_dump())
         return report_data
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))

@@ -45,42 +45,37 @@ export const DashboardPage: React.FC = () => {
   // Empty State when no dataset is loaded
   if (!hasDataset) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[75vh] text-center px-4 py-12 space-y-8">
-        <div className="h-20 w-20 rounded-3xl bg-blue-500/10 dark:bg-blue-500/20 border border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 text-4xl shadow-xl shadow-blue-500/10">
-          <Zap className="h-10 w-10 animate-pulse text-blue-600 dark:text-blue-400" />
+      <div className="mx-auto flex w-full max-w-4xl flex-col items-center justify-center space-y-6 py-6 text-center sm:py-10 lg:min-h-[75vh]">
+        <div className="h-12 w-12 rounded-xl bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 flex items-center justify-center">
+          <Zap className="h-6 w-6" aria-hidden="true" />
         </div>
 
         <div className="space-y-3 max-w-xl">
-          <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900 dark:text-white">
-            Enterprise Data Analytics Suite
-          </h2>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Start with a dataset</h1>
           <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
-            Upload your data files or initialize an instant demo dataset to
-            unlock natural language AI queries, in-memory SQL execution, and
-            custom BI dashboards.
+            Upload a dataset to explore rows and run SQL, or upload a document to ask questions about it.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <Link
             to="/upload"
-            className="flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold shadow-lg shadow-blue-600/25 transition-all"
+            className="inline-flex min-h-11 items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold"
           >
-            Upload Data File
-            <ArrowRight className="h-4 w-4" />
+            Upload a file
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
         </div>
 
         {/* Demo Datasets Grid */}
         <div className="w-full max-w-4xl pt-6">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">
-            Or Quick-Start with Curated Demo Datasets
-          </p>
+          <h2 className="text-lg font-semibold mb-3">Try a sample dataset</h2>
+          <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">Pick one to explore the workspace right away.</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
             <button
               onClick={() => handleLoadDemo("Sales Data")}
               disabled={loadingSample !== null}
-              className="p-5 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500/50 hover:shadow-md transition-all group flex flex-col justify-between"
+              className="text-left p-5 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500/50 transition-colors group flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between">
@@ -106,7 +101,7 @@ export const DashboardPage: React.FC = () => {
             <button
               onClick={() => handleLoadDemo("Employee Data")}
               disabled={loadingSample !== null}
-              className="p-5 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-500/50 hover:shadow-md transition-all group flex flex-col justify-between"
+              className="text-left p-5 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-500/50 transition-colors group flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between">
@@ -134,7 +129,7 @@ export const DashboardPage: React.FC = () => {
             <button
               onClick={() => handleLoadDemo("Finance Data")}
               disabled={loadingSample !== null}
-              className="p-5 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-500/50 hover:shadow-md transition-all group flex flex-col justify-between"
+              className="text-left p-5 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-500/50 transition-colors group flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between">
@@ -181,6 +176,9 @@ export const DashboardPage: React.FC = () => {
       : null;
   const needsReview = (missing ?? 0) > 0 || (duplicates ?? 0) > 0;
   const isText = activeDataset?.is_text;
+  const checksUnavailable = missing === null || duplicates === null;
+  const checking = !isText && previewLoading;
+  const canAnalyze = isText || (!checking && !checksUnavailable);
   const promptLink = (prompt: string) => ({
     pathname: "/query",
     search: `?${new URLSearchParams({ prompt, dataset: activeDataset?.name || "" })}`,
@@ -237,9 +235,9 @@ export const DashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 min-w-0">
+    <div className="min-w-0 space-y-6 sm:space-y-8">
       <header className="space-y-2">
-        <h1 className="text-2xl sm:text-3xl font-bold break-words">
+        <h1 className="break-words text-2xl font-bold leading-tight sm:text-3xl">
           {activeDataset?.name}
         </h1>
         <p className="text-sm text-slate-600 dark:text-slate-300">
@@ -252,25 +250,35 @@ export const DashboardPage: React.FC = () => {
 
       <section
         aria-labelledby="readiness-title"
-        className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 space-y-5"
+        className={`grid gap-4 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 sm:p-6 ${
+          isText ? "" : "lg:grid-cols-2 lg:gap-x-8"
+        }`}
       >
         <div className="space-y-2">
-          <h2 id="readiness-title" className="text-xl font-semibold">
+          <h2 id="readiness-title" className="text-lg font-semibold leading-snug sm:text-xl">
             {isText
               ? "Explore your document"
-              : needsReview
+              : checking
+                ? "Checking this dataset…"
+                : checksUnavailable
+                  ? "Data checks unavailable"
+                  : needsReview
                 ? "Review your data before exploring"
                 : "Choose a question to investigate"}
           </h2>
           <p className="text-sm text-slate-600 dark:text-slate-300 max-w-prose">
             {isText
               ? "Ask questions about this document and inspect the supporting sources."
-              : "Start with missing values and duplicate rows. These checks do not establish accuracy or suitability for analysis."}
+              : checking
+                ? "Checking for missing cells and duplicate rows."
+                : checksUnavailable
+                  ? "Reload the preview to check for missing cells and duplicate rows."
+                  : "These checks do not establish accuracy or suitability for analysis."}
           </p>
         </div>
         {!isText && (
-          <dl className="grid gap-5 sm:grid-cols-2 border-y border-slate-200 dark:border-slate-800 py-5">
-            <div>
+          <dl className="grid min-w-0 grid-cols-2 divide-x divide-slate-200 border-y border-slate-200 py-3 dark:divide-slate-700 dark:border-slate-700 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-center lg:rounded-xl lg:border lg:bg-slate-50 lg:py-4 dark:lg:bg-slate-950/40">
+            <div className="min-w-0 pr-3 lg:pl-4">
               <dt className="text-sm text-slate-600 dark:text-slate-300">
                 Cells populated
               </dt>
@@ -288,10 +296,10 @@ export const DashboardPage: React.FC = () => {
                     ? "Load the preview to check missing values."
                     : missing === 0
                       ? "No missing values"
-                      : `${missing.toLocaleString()} missing cells`}
+                      : `${missing.toLocaleString()} missing ${missing === 1 ? "cell" : "cells"}`}
               </dd>
             </div>
-            <div>
+            <div className="min-w-0 pl-3 lg:px-4">
               <dt className="text-sm text-slate-600 dark:text-slate-300">
                 Duplicate rows
               </dt>
@@ -308,17 +316,19 @@ export const DashboardPage: React.FC = () => {
             </div>
           </dl>
         )}
-        <Link
+        {canAnalyze ? <Link
           to={isText ? "/document" : needsReview ? "/cleaning" : "/query"}
-          className="inline-flex min-h-11 items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm"
+          className="inline-flex min-h-11 items-center gap-2 justify-self-start rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
         >
           {isText
             ? "Ask about this document"
             : needsReview
               ? "Review missing values and duplicates"
               : "Ask a question"}
-          <ArrowRight className="h-4 w-4" aria-hidden="true" />
-        </Link>
+          <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
+        </Link> : !checking && (
+          <button type="button" onClick={() => void refreshPreview()} className="min-h-11 justify-self-start rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700">{currentPreview ? "Retry data checks" : "Retry preview"}</button>
+        )}
       </section>
 
       {!isText && (
@@ -331,7 +341,7 @@ export const DashboardPage: React.FC = () => {
               <p className="text-sm text-slate-600 dark:text-slate-300">
                 {currentPreview
                   ? `First ${currentPreview.data.length} rows. Filtering and table export apply to this preview only.`
-                  : "Preview unavailable. Retry below to load rows."}
+                  : previewLoading ? "Loading rows…" : "Preview unavailable. Use Retry preview above."}
               </p>
             </div>
             <Link
@@ -351,15 +361,8 @@ export const DashboardPage: React.FC = () => {
               className="rounded-xl border border-slate-300 dark:border-slate-700 p-5 space-y-3"
             >
               <p>
-                We could not load this dataset’s preview. Try again to inspect
-                rows and checks.
+                We could not load the rows and checks for this dataset.
               </p>
-              <button
-                onClick={() => refreshPreview()}
-                className="min-h-11 px-4 rounded-lg bg-blue-600 text-white"
-              >
-                Retry preview
-              </button>
             </div>
           ) : (
             <DataTable
@@ -372,7 +375,7 @@ export const DashboardPage: React.FC = () => {
         </section>
       )}
 
-      {!isText && (
+      {!isText && canAnalyze && (
         <section aria-labelledby="questions-title" className="space-y-3">
           <h2 id="questions-title" className="text-lg font-semibold">
             Start with a question

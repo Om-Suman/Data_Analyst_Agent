@@ -1,3 +1,4 @@
+import { DatasetEmptyState } from "../components/DatasetEmptyState";
 import React, { useState, useEffect, useRef } from "react";
 import {
   Terminal,
@@ -17,7 +18,8 @@ import { DataTable } from "../components/DataTable";
 import { useToast } from "../components/Toast";
 
 export const SQLStudioPage: React.FC = () => {
-  const { preview, hasDataset, activeDataset } = useDataset();
+  const { preview, hasDataset: hasActiveDataset, activeDataset, activeDataset: selectedDataset } = useDataset();
+  const hasDataset = hasActiveDataset && !selectedDataset?.is_text;
   const { success, error: toastError } = useToast();
 
   const [query, setQuery] = useState("SELECT * FROM df LIMIT 25;");
@@ -27,6 +29,7 @@ export const SQLStudioPage: React.FC = () => {
   const autoRunStarted = useRef(false);
 
   const columns = preview?.columns || [];
+  const quoteColumn = (column: string) => `"${column.replace(/"/g, '""')}"`;
 
   const snippets = [
     { label: "Sample 20 Rows", sql: "SELECT * FROM df LIMIT 20;" },
@@ -38,14 +41,14 @@ export const SQLStudioPage: React.FC = () => {
       label: "Group By Aggregation",
       sql:
         columns.length >= 2
-          ? `SELECT ${columns[0]}, COUNT(*) as count FROM df GROUP BY ${columns[0]} ORDER BY count DESC LIMIT 10;`
+          ? `SELECT ${quoteColumn(columns[0])}, COUNT(*) as count FROM df GROUP BY ${quoteColumn(columns[0])} ORDER BY count DESC LIMIT 10;`
           : "SELECT * FROM df LIMIT 10;",
     },
     {
       label: "Numeric Stats",
       sql:
         preview?.numeric_cols && preview.numeric_cols.length > 0
-          ? `SELECT AVG(${preview.numeric_cols[0]}) as avg_val, MIN(${preview.numeric_cols[0]}) as min_val, MAX(${preview.numeric_cols[0]}) as max_val FROM df;`
+          ? `SELECT AVG(${quoteColumn(preview.numeric_cols[0])}) as avg_val, MIN(${quoteColumn(preview.numeric_cols[0])}) as min_val, MAX(${quoteColumn(preview.numeric_cols[0])}) as max_val FROM df;`
           : "SELECT * FROM df LIMIT 10;",
     },
   ];
@@ -83,9 +86,10 @@ export const SQLStudioPage: React.FC = () => {
 
   if (!hasDataset) {
     return (
-      <div className="p-8 text-center text-slate-500 border border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-100/50 dark:bg-slate-900/30">
-        Please load or select a dataset first to query it via SQL Studio.
-      </div>
+      <DatasetEmptyState
+        title="SQL Studio"
+        description="Write SQL to filter, group, and summarize your data."
+      />
     );
   }
 
@@ -178,7 +182,7 @@ export const SQLStudioPage: React.FC = () => {
               return (
                 <button
                   key={col}
-                  onClick={() => setQuery((prev) => `${prev} ${col}`)}
+                  onClick={() => setQuery((prev) => `${prev} ${quoteColumn(col)}`)}
                   title="Click to append column name to query"
                   className="w-full flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-left transition-colors"
                 >

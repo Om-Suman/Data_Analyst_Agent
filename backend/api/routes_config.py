@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+import requests
+from fastapi import APIRouter, Depends, HTTPException
 from backend.api.deps import get_current_session
 from backend.session.state import SessionState
 from backend.schemas.config import ConfigResponse, ConfigUpdateRequest
@@ -26,7 +27,7 @@ def get_config(session: SessionState = Depends(get_current_session)):
         api_key_masked=_mask_api_key(key),
         primary_model=cfg.get("primary_model", "qwen/qwen3.8-27b"),
         fallback_model=cfg.get("fallback_model", "openai/gpt-oss-120b"),
-        theme=cfg.get("theme", "dark"),
+        theme=cfg.get("theme", "light"),
         max_tokens=int(cfg.get("max_tokens", 2048)),
         temperature=float(cfg.get("temperature", 0.3)),
         default_outlier=cfg.get("default_outlier", "none"),
@@ -70,3 +71,25 @@ def update_config(
 def reset_session(session: SessionState = Depends(get_current_session)):
     session.reset()
     return {"status": "ok", "message": "Session reset successfully."}
+
+
+@router.get("/config/connection")
+def check_connection(session: SessionState = Depends(get_current_session)):
+    key = session.config.get("groq_api_key", "").strip()
+    if not key:
+        raise HTTPException(status_code=400, detail="Save an API key before testing the connection.")
+    try:
+        response = requests.get(
+            "https://api.groq.com/openai/v1/models",
+            headers={"Authorization": f"Bearer {key}"},
+            timeout=8,
+            allow_redirects=False,
+        )
+        if response.status_code in (401, 403):
+            raise HTTPException(status_code=400, detail="Groq rejected this key or denied access. Check your API key and project permissions.")
+        response.raise_for_status()
+        models = {model["id"] for model in response.json()["data"] if model.get("active", True)}
+    except (requests.RequestException, ValueError, KeyError, TypeError):
+        raise HTTPException(status_code=502, detail="Could not verify the Groq connection. Try again shortly.")
+    selected = {session.config.get("primary_model"), session.config.get("fallback_model")}
+    return {"unavailable_models": sorted(model for model in selected if model and model not in models)}

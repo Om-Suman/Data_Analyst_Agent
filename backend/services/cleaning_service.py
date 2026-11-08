@@ -60,7 +60,15 @@ def execute_cleaning_dry_run(
     session: SessionState,
     config_dict: dict[str, Any],
 ) -> tuple[pd.DataFrame, CleaningReport, dict[str, Any]]:
-    df = session.get_active_df()
+    record = session.get_active_record()
+    if config_dict.get("expected_dataset") is not None and (
+        not record
+        or record["name"] != config_dict["expected_dataset"]
+        or record["version"] != config_dict.get("expected_version")
+        or record["uploaded_at"].isoformat() != config_dict.get("expected_uploaded_at")
+    ):
+        raise ValueError("The dataset changed. Refresh the preview before applying changes.")
+    df = record.get("df") if record else None
     if df is None:
         raise ValueError("No active dataset to clean.")
 

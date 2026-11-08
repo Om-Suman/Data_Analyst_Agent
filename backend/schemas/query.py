@@ -39,6 +39,7 @@ class QueryHistoryItem(BaseModel):
     code: str
     result_summary: str
     dataset: str
+    dataset_version: Optional[int] = None
     route: Optional[str] = "dataframe_analysis"
     model_used: Optional[str] = ""
     insights: Optional[str] = ""

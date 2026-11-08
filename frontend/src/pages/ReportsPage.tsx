@@ -1,3 +1,4 @@
+import { DatasetEmptyState } from "../components/DatasetEmptyState";
 import React, { useState, useEffect } from "react";
 import {
   FileSpreadsheet,
@@ -14,23 +15,27 @@ import { ProfileResponse } from "../types";
 import { useToast } from "../components/Toast";
 
 export const ReportsPage: React.FC = () => {
-  const { activeDataset, hasDataset } = useDataset();
+  const { activeDataset, hasDataset: hasActiveDataset } = useDataset();
+  const hasDataset = hasActiveDataset && !activeDataset?.is_text;
   const { success, error } = useToast();
 
-  const [includeSample, setIncludeSample] = useState(true);
+  const [includeSample, setIncludeSample] = useState(false);
   const [includeStats, setIncludeStats] = useState(true);
   const [includeInsights, setIncludeInsights] = useState(true);
   const [downloadingHtml, setDownloadingHtml] = useState(false);
   const [downloadingExcel, setDownloadingExcel] = useState(false);
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
+  const [profileError, setProfileError] = useState(false);
+  const [profileRetry, setProfileRetry] = useState(0);
 
   useEffect(() => {
     if (!hasDataset) return;
+    setProfileError(false);
     reportsApi
       .getProfile()
       .then((res) => setProfile(res))
-      .catch((err) => console.error(err));
-  }, [hasDataset]);
+      .catch(() => setProfileError(true));
+  }, [hasDataset, profileRetry]);
 
   const handleDownloadHtml = async () => {
     setDownloadingHtml(true);
@@ -67,9 +72,10 @@ export const ReportsPage: React.FC = () => {
 
   if (!hasDataset) {
     return (
-      <div className="p-8 text-center text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900/30 shadow-sm">
-        Please load or select a dataset first to generate exports and reports.
-      </div>
+      <DatasetEmptyState
+        title="Reports"
+        description="Summarize your dataset and export a report you can share."
+      />
     );
   }
 
@@ -110,7 +116,7 @@ export const ReportsPage: React.FC = () => {
                   onChange={(e) => setIncludeSample(e.target.checked)}
                   className="rounded bg-slate-100 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500"
                 />
-                Include 20-row sample table
+                Include the first 20 raw rows
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -153,7 +159,7 @@ export const ReportsPage: React.FC = () => {
               </h3>
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-400">
-              Complete .xlsx workbook formatted across 5 specialized sheets:
+              Excel workbook with the dataset name and version, plus the following sheets:
             </p>
 
             <ul className="text-xs text-slate-700 dark:text-slate-300 space-y-1.5 list-disc list-inside">
@@ -232,6 +238,7 @@ export const ReportsPage: React.FC = () => {
       </div>
 
       {/* Deep Column Schema Profile Summary */}
+      {profileError && <div role="alert"><p>Could not load the dataset profile.</p><button type="button" onClick={() => setProfileRetry(value => value + 1)} className="underline">Retry profile</button></div>}
       {profile && (
         <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-5 sm:p-6 space-y-4 shadow-sm">
           <h3 className="text-sm font-bold text-slate-900 dark:text-slate-200 flex items-center gap-2">

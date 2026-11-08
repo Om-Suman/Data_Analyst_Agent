@@ -12,6 +12,8 @@ interface PlotlyChartProps {
   chartType?: string;
   sourcePage?: string;
   showActions?: boolean;
+  source?: { name?: string | null; version?: number | null };
+  showPlotTitle?: boolean;
 }
 
 export const PlotlyChart: React.FC<PlotlyChartProps> = ({
@@ -22,13 +24,15 @@ export const PlotlyChart: React.FC<PlotlyChartProps> = ({
   chartType = "Chart",
   sourcePage = "Visualizations",
   showActions = true,
+  source,
+  showPlotTitle = true,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const fullscreenRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [pinned, setPinned] = useState(false);
 
-  const { pinChart } = useDataset();
+  const { pinChart, activeDataset } = useDataset();
   const { success, error } = useToast();
 
   useEffect(() => {
@@ -45,8 +49,10 @@ export const PlotlyChart: React.FC<PlotlyChartProps> = ({
         size: 13,
       },
       margin: { l: 45, r: 25, t: 45, b: 45 },
-      autosize: true,
       ...(spec.layout || {}),
+      autosize: true,
+      width: undefined,
+      ...(!showPlotTitle ? { title: { text: "" } } : {}),
     };
 
     const config = {
@@ -92,7 +98,7 @@ export const PlotlyChart: React.FC<PlotlyChartProps> = ({
         console.error("Plotly purge error:", err);
       }
     };
-  }, [spec, title, showActions]);
+  }, [spec, title, showActions, showPlotTitle]);
 
   // Fullscreen plot effect
   useEffect(() => {
@@ -140,6 +146,8 @@ export const PlotlyChart: React.FC<PlotlyChartProps> = ({
         chart_type: chartType,
         figure_spec: spec,
         source_page: sourcePage,
+        dataset_name: source ? source.name : activeDataset?.name,
+        dataset_version: source ? source.version : activeDataset?.version,
       });
       setPinned(true);
       success("Chart Pinned", "Saved to your Custom BI Dashboard.");
@@ -186,10 +194,10 @@ export const PlotlyChart: React.FC<PlotlyChartProps> = ({
   }
 
   return (
-    <div className={`relative group ${className}`}>
+    <div className={`relative group min-w-0 max-w-full overflow-hidden ${className}`}>
       {/* Action Toolbar */}
       {showActions && (
-        <div className="absolute top-2 right-2 z-10 flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity bg-slate-900/80 dark:bg-slate-950/80 backdrop-blur-md p-1 rounded-lg border border-slate-700/60 shadow-md">
+        <div className="relative z-10 mb-2 ml-auto flex w-fit items-center gap-1.5 rounded-lg border border-slate-700/60 bg-slate-900 p-1 sm:absolute sm:right-2 sm:top-2 sm:mb-0">
           <button
             onClick={handlePin}
             title="Pin to Custom Dashboard"

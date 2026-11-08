@@ -1,6 +1,6 @@
-import React, { useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
+import { Link, useLocation } from "react-router-dom";
 import {
-  UploadCloud,
   FileSpreadsheet,
   FileText,
   Database,
@@ -24,6 +24,13 @@ export const UploadPage: React.FC = () => {
     text: string;
   } | null>(null);
   const operationRef = useRef(false);
+  const { hash } = useLocation();
+  const samplesRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (hash !== "#samples") return;
+    const frame = requestAnimationFrame(() => samplesRef.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [hash]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFiles = async (files: FileList | File[]) => {
@@ -98,12 +105,11 @@ export const UploadPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
           Upload data
-        </h2>
+        </h1>
         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Upload tabular datasets (CSV, Excel, JSON, SQLite) or unstructured
-          documents (PDF, DOCX, TXT, OCR Images)
+          Add datasets to analyze or documents to ask questions about. For scanned PDFs, upload a searchable copy after OCR.
         </p>
       </div>
 
@@ -121,8 +127,15 @@ export const UploadPage: React.FC = () => {
           ) : (
             <AlertCircle className="h-4 w-4" />
           )}
-          <span>{message.text}</span>
+          <span className="min-w-0 break-words">{message.text}</span>
         </div>
+      )}
+
+      {datasets.some((dataset) => dataset.name === activeDatasetName && dataset.is_text) && (
+        <Link to="/document" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700">
+          <FileText className="h-4 w-4" aria-hidden="true" />
+          Ask about this document
+        </Link>
       )}
 
       {/* Drag and Drop Zone */}
@@ -137,7 +150,7 @@ export const UploadPage: React.FC = () => {
           setIsDragging(false);
           if (e.dataTransfer.files) handleFiles(e.dataTransfer.files);
         }}
-        className={`border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all ${
+        className={`border-2 border-dashed rounded-2xl px-5 py-6 sm:py-8 text-center transition-colors ${
           isDragging
             ? "border-blue-500 bg-blue-50 dark:bg-blue-500/10"
             : "border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900/30 hover:border-blue-400 dark:hover:border-slate-700 hover:bg-blue-50/20 dark:hover:bg-slate-900/50 shadow-sm"
@@ -164,9 +177,6 @@ export const UploadPage: React.FC = () => {
           >
             Choose files
           </button>
-          <div className="h-14 w-14 rounded-2xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-sm">
-            <UploadCloud className="h-7 w-7" />
-          </div>
           <div className="space-y-1">
             <p className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white">
               <span role="status">
@@ -182,9 +192,9 @@ export const UploadPage: React.FC = () => {
 
       {/* Demo Sample Cards */}
       <div className="space-y-3">
-        <h3 className="text-sm font-bold text-slate-900 dark:text-slate-200">
-          Or Start with Pre-Loaded Demo Datasets
-        </h3>
+        <h2 id="samples" ref={samplesRef} tabIndex={-1} className="scroll-mt-24 text-base font-semibold text-slate-900 dark:text-slate-200">
+          Try a sample dataset
+        </h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <button
             type="button"
@@ -244,17 +254,17 @@ export const UploadPage: React.FC = () => {
 
       {/* Dataset Management Table */}
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-5 sm:p-6 space-y-4 shadow-sm">
-        <h3 className="text-sm font-bold text-slate-900 dark:text-slate-200 flex items-center gap-2">
+        <h2 className="text-sm font-bold text-slate-900 dark:text-slate-200 flex items-center gap-2">
           <Layers className="h-4 w-4 text-blue-500 dark:text-blue-400" />
-          Loaded Datasets in Workspace ({datasets.length})
-        </h3>
+          Workspace files ({datasets.length})
+        </h2>
 
         {datasets.length === 0 ? (
           <div className="text-center py-8 text-xs text-slate-500 dark:text-slate-400">
-            No datasets currently loaded in memory.
+            Your uploaded files and sample datasets will appear here.
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div role="region" aria-label="Loaded datasets table" tabIndex={0} className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 dark:bg-slate-800/60 text-[11px] uppercase tracking-wider text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
                 <tr>
@@ -311,7 +321,7 @@ export const UploadPage: React.FC = () => {
                       <td className="px-4 py-3 text-right">
                         <button
                           onClick={() => handleDelete(d.name)}
-                          className="p-1.5 rounded hover:bg-rose-50 dark:hover:bg-rose-500/20 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
+                          className="p-2 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/20 text-rose-700 dark:text-rose-300 transition-colors"
                           aria-label={`Delete ${d.name}`}
                           disabled={uploading}
                           title="Delete dataset"

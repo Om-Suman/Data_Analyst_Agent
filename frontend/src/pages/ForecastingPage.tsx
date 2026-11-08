@@ -1,3 +1,4 @@
+import { DatasetEmptyState } from "../components/DatasetEmptyState";
 import React, { useState, useEffect } from "react";
 import {
   TrendingUp,
@@ -14,7 +15,8 @@ import { PlotlyChart } from "../components/PlotlyChart";
 import { DataTable } from "../components/DataTable";
 
 export const ForecastingPage: React.FC = () => {
-  const { preview, hasDataset } = useDataset();
+  const { preview, hasDataset: hasActiveDataset, activeDataset: selectedDataset } = useDataset();
+  const hasDataset = hasActiveDataset && !selectedDataset?.is_text;
 
   const [targetCol, setTargetCol] = useState("");
   const [method, setMethod] = useState("Moving Average");
@@ -35,7 +37,7 @@ export const ForecastingPage: React.FC = () => {
   }, [numericCols]);
 
   const handleRun = async () => {
-    if (!hasDataset || !targetCol) return;
+    if (!hasDataset || !targetCol || loading) return;
     setLoading(true);
     setError(null);
     try {
@@ -54,23 +56,18 @@ export const ForecastingPage: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    if (hasDataset && targetCol && !forecast) {
-      handleRun();
-    }
-  }, [targetCol, hasDataset]);
-
   if (!hasDataset) {
     return (
-      <div className="p-8 text-center text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900/30 shadow-sm">
-        Please load or select a dataset first to run time series forecasting.
-      </div>
+      <DatasetEmptyState
+        title="Forecasting"
+        description="Use historical values to estimate what may happen over the next few periods."
+      />
     );
   }
 
   const tableData =
     forecast?.forecast_index?.map((period, idx) => ({
-      Period: period,
+      Step: period,
       "Forecast Value":
         forecast.forecast_values[idx] !== null
           ? forecast.forecast_values[idx]?.toFixed(2)
@@ -90,11 +87,10 @@ export const ForecastingPage: React.FC = () => {
       <div>
         <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
           <TrendingUp className="h-5 w-5 text-emerald-500 dark:text-emerald-400" />
-          Time Series Forecasting Studio
+          Row-order forecasting
         </h2>
         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Predict future trends with Moving Average, Linear Trend Regression, or
-          Exponential Smoothing
+          Forecast numeric values in their current row order. Missing values are skipped. Each step represents one observation, so sort your data in time order before running a forecast.
         </p>
       </div>
 
@@ -113,6 +109,7 @@ export const ForecastingPage: React.FC = () => {
               Target Numeric Column
             </label>
             <select
+              aria-label="Target numeric column"
               value={targetCol}
               onChange={(e) => setTargetCol(e.target.value)}
               className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 font-mono shadow-sm"
@@ -130,6 +127,7 @@ export const ForecastingPage: React.FC = () => {
               Forecasting Algorithm
             </label>
             <select
+              aria-label="Forecasting algorithm"
               value={method}
               onChange={(e) => setMethod(e.target.value)}
               className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 shadow-sm"
@@ -144,7 +142,7 @@ export const ForecastingPage: React.FC = () => {
 
           <div>
             <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">
-              Forecast Horizon: {horizon} periods
+              Forecast horizon: {horizon} row steps
             </label>
             <input
               type="range"
@@ -213,7 +211,7 @@ export const ForecastingPage: React.FC = () => {
       {forecast && (
         <div className="space-y-6">
           {/* Chart Card */}
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-5 sm:p-6 space-y-4 shadow-sm">
+          <div className="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-5 sm:p-6 space-y-4 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-slate-200">
@@ -234,7 +232,7 @@ export const ForecastingPage: React.FC = () => {
               </a>
             </div>
 
-            <PlotlyChart spec={forecast.figure_spec} height={460} />
+            <PlotlyChart spec={forecast.figure_spec} height={460} title={`${forecast.method} forecast for ${forecast.column}`} sourcePage="Forecasting" showPlotTitle={false} />
           </div>
 
           {/* Forecast Summary Table */}

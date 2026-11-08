@@ -18,6 +18,7 @@ interface DataTableProps {
   className?: string;
   showSearch?: boolean;
   showExport?: boolean;
+  showPagination?: boolean;
   emptyMessage?: string;
 }
 
@@ -28,6 +29,7 @@ export const DataTable: React.FC<DataTableProps> = ({
   className = "",
   showSearch = true,
   showExport = true,
+  showPagination = true,
   emptyMessage = "No records found",
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -84,7 +86,7 @@ export const DataTable: React.FC<DataTableProps> = ({
   const totalPages = Math.max(1, Math.ceil(sortedData.length / pageSize));
   const validCurrentPage = Math.min(currentPage, totalPages);
   const startIdx = (validCurrentPage - 1) * pageSize;
-  const pageData = sortedData.slice(startIdx, startIdx + pageSize);
+  const pageData = showPagination ? sortedData.slice(startIdx, startIdx + pageSize) : sortedData;
 
   const handleExportCSV = () => {
     const header = columns.join(",");
@@ -129,13 +131,13 @@ export const DataTable: React.FC<DataTableProps> = ({
             <input
               aria-label="Filter table rows"
               type="text"
-              placeholder={`Filter ${data.length} records across all columns...`}
+              placeholder="Filter rows…"
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700/80 rounded-xl pl-9 pr-4 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+              className="w-full min-h-11 bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl pl-9 pr-4 py-2 text-base sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-600 dark:placeholder-slate-400 focus:border-blue-500"
             />
           </div>
         ) : (
@@ -175,7 +177,7 @@ export const DataTable: React.FC<DataTableProps> = ({
       </div>
 
       {/* Table Container */}
-      <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 shadow-sm">
+      <div role="region" aria-label="Data table" tabIndex={0} className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 shadow-sm">
         <table className="w-full text-left border-collapse">
           <thead className="bg-slate-50 dark:bg-slate-950/70 border-b border-slate-200 dark:border-slate-800 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
             <tr>
@@ -192,12 +194,12 @@ export const DataTable: React.FC<DataTableProps> = ({
                           : "descending"
                         : "none"
                     }
-                    className={`${densityPadding} cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors select-none`}
+                    className="p-0"
                   >
                     <button
                       type="button"
                       onClick={() => handleSort(col)}
-                      className="flex min-h-11 w-full items-center gap-1.5 text-left"
+                      className="flex min-h-11 w-full items-center gap-1.5 px-4 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800 focus-visible:outline-offset-[-2px]"
                       aria-label={`Sort by ${col}`}
                     >
                       <span className="font-mono text-slate-800 dark:text-slate-200">
@@ -269,6 +271,7 @@ export const DataTable: React.FC<DataTableProps> = ({
       </div>
 
       {/* Pagination Footer */}
+      {showPagination && (
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400 pt-1">
         <div className="flex items-center gap-2">
           <span>
@@ -326,6 +329,7 @@ export const DataTable: React.FC<DataTableProps> = ({
           </button>
         </div>
       </div>
+      )}
     </div>
   );
 };

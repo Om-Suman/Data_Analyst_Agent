@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { PinnedChartItem } from '../types';
 import { NavLink } from 'react-router-dom';
 import {
   Layers,
@@ -12,19 +13,49 @@ import {
 import { useDataset } from '../context/DatasetContext';
 import { PlotlyChart } from '../components/PlotlyChart';
 import { useToast } from '../components/Toast';
+import { DatasetEmptyState } from '../components/DatasetEmptyState';
 
 export const CustomDashboardPage: React.FC = () => {
-  const { pinnedCharts, unpinChart, hasDataset, activeDataset } = useDataset();
+  const { activeDataset, pinnedCharts, unpinChart, pinChart } = useDataset();
   const { success, error } = useToast();
 
-  const handleUnpin = async (id: string, title: string) => {
+  const [removed, setRemoved] = useState<PinnedChartItem | null>(null);
+  const [pending, setPending] = useState(false);
+  const handleUnpin = async (item: PinnedChartItem) => {
+    setPending(true);
     try {
-      await unpinChart(id);
-      success('Chart Removed', `Unpinned "${title}" from dashboard.`);
+      await unpinChart(item.id);
+      setRemoved(item);
     } catch (err: any) {
       error('Error', err.message || 'Failed to remove pinned chart.');
+    } finally {
+      setPending(false);
     }
   };
+
+  const restoreChart = async () => {
+    if (!removed || pending) return;
+    setPending(true);
+    try {
+      const { title, chart_type, figure_spec, source_page, notes, dataset_name, dataset_version } = removed;
+      await pinChart({ title, chart_type, figure_spec, source_page, notes, dataset_name, dataset_version });
+      setRemoved(null);
+      success('Chart restored');
+    } catch {
+      error('Could not restore chart', 'Try Undo again.');
+    } finally {
+      setPending(false);
+    }
+  };
+
+  if (!pinnedCharts.length && !removed && (!activeDataset || activeDataset.is_text)) {
+    return (
+      <DatasetEmptyState
+        title="BI Canvas"
+        description="Create a chart from your dataset and pin it here to keep important views together."
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -51,6 +82,7 @@ export const CustomDashboardPage: React.FC = () => {
         </div>
       </div>
 
+      {removed && <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700"><p role="status" className="break-words">Removed {removed.title}.</p><button type="button" disabled={pending} onClick={restoreChart} className="min-h-11 px-3 font-semibold text-blue-700 underline dark:text-blue-300">Undo</button></div>}
       {/* Grid of Pinned Charts */}
       {pinnedCharts.length === 0 ? (
         <div className="p-12 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-white/40 dark:bg-slate-900/20 space-y-4">
@@ -61,7 +93,7 @@ export const CustomDashboardPage: React.FC = () => {
               You can pin any interactive chart from Visualizations, AI Copilot, or Explorers using the <span className="font-semibold text-blue-500">Pin icon (📌)</span>.
             </p>
           </div>
-          <div className="flex justify-center gap-3 pt-2">
+          <div className="flex flex-wrap justify-center gap-3 pt-2">
             <NavLink
               to="/visualizations"
               className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold"
@@ -89,7 +121,7 @@ export const CustomDashboardPage: React.FC = () => {
                   <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
                     {item.title}
                   </h3>
-                  <div className="flex items-center gap-2 mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-500 dark:text-slate-400">
                     <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 font-medium">
                       {item.chart_type}
                     </span>
@@ -99,14 +131,17 @@ export const CustomDashboardPage: React.FC = () => {
                       {new Date(item.pinned_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                     <span>•</span>
-                    <span>Source: {item.source_page}</span>
+                    <span>{item.source_page}</span>
+                    <span className="basis-full break-words">{item.dataset_name || 'Dataset source unavailable'}{item.dataset_version != null ? ` · Version ${item.dataset_version}` : ''}</span>
                   </div>
                 </div>
 
                 <button
-                  onClick={() => handleUnpin(item.id, item.title)}
-                  title="Remove from Dashboard"
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors"
+                  type="button"
+                  disabled={pending}
+                  onClick={() => handleUnpin(item)}
+                  aria-label={`Remove ${item.title} from dashboard`}
+                  className="min-h-11 min-w-11 shrink-0 rounded-lg text-slate-600 hover:text-rose-700 hover:bg-rose-50 dark:text-slate-300 dark:hover:bg-rose-950/50 transition-colors"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -120,6 +155,7 @@ export const CustomDashboardPage: React.FC = () => {
                   title={item.title}
                   chartType={item.chart_type}
                   sourcePage={item.source_page}
+                  source={{ name: item.dataset_name, version: item.dataset_version }}
                 />
               </div>
 

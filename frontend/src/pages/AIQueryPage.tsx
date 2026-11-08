@@ -1,3 +1,4 @@
+import { DatasetEmptyState } from "../components/DatasetEmptyState";
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -27,7 +28,8 @@ import { DataTable } from "../components/DataTable";
 import { MarkdownRenderer } from "../components/MarkdownRenderer";
 
 export const AIQueryPage: React.FC = () => {
-  const { activeDataset, hasDataset } = useDataset();
+  const { activeDataset, hasDataset: hasActiveDataset } = useDataset();
+  const hasDataset = hasActiveDataset && !activeDataset?.is_text;
   const [searchParams] = useSearchParams();
   const incomingPrompt = searchParams.get("prompt") || "";
   const sourceDataset = searchParams.get("dataset");
@@ -47,6 +49,10 @@ export const AIQueryPage: React.FC = () => {
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(
     null,
   );
+  const historySource = history.find(item => item.id === selectedHistoryId);
+  const chartSource = selectedHistoryId
+    ? { name: historySource?.dataset, version: historySource?.dataset_version }
+    : undefined;
 
   const promptSuggestions = [
     "What are the top 5 highest sales categories?",
@@ -118,12 +124,12 @@ export const AIQueryPage: React.FC = () => {
 
   const handleAsk = async (qText?: string) => {
     const q = qText || question;
-    if (!q.trim() || !hasDataset) return;
+    if (!q.trim() || !hasDataset || loading) return;
     setLoading(true);
     setError(null);
     setSelectedHistoryId(null);
     try {
-      const res = await queryApi.ask(q);
+      const res = await queryApi.ask(q, undefined, activeDataset?.name);
       setCurrentResponse(res);
       await fetchHistory();
       if (!qText) setQuestion("");
@@ -153,9 +159,10 @@ export const AIQueryPage: React.FC = () => {
 
   if (!hasDataset) {
     return (
-      <div className="p-8 text-center text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900/30 shadow-sm">
-        Please load or select a dataset first to execute AI Data Queries.
-      </div>
+      <DatasetEmptyState
+        title="AI Data Query"
+        description="Ask questions in plain language and explore the answers with your data."
+      />
     );
   }
 
@@ -207,22 +214,20 @@ export const AIQueryPage: React.FC = () => {
       )}
       {/* Query Input Box */}
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4 sm:p-5 space-y-3 shadow-sm">
-        <div className="flex flex-col sm:flex-row gap-2">
+        <label htmlFor="analytical-question" className="block text-sm font-semibold">Your analytical question</label>
+        <form className="flex flex-col sm:flex-row gap-2" onSubmit={(event) => { event.preventDefault(); void handleAsk(); }}>
           <input
             type="text"
-            aria-label="Your analytical question"
+            id="analytical-question"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleAsk();
-            }}
-            placeholder="Ask anything (e.g. 'What are the top 5 highest sales categories?')..."
-            className="flex-1 min-w-0 bg-slate-50 dark:bg-slate-950/80 border border-slate-300 dark:border-slate-700/80 rounded-xl px-4 py-3 text-base sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-inner transition-all"
+            placeholder="What are the top five sales categories?"
+            className="flex-1 min-w-0 min-h-11 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 text-base sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-600 dark:placeholder-slate-400 focus:border-blue-500"
           />
           <button
-            onClick={() => handleAsk()}
+            type="submit"
             disabled={loading || !question.trim()}
-            className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold flex items-center gap-2 shadow-md shadow-blue-600/20 transition-all text-sm"
+            className="min-h-11 shrink-0 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-semibold flex items-center justify-center gap-2 text-sm"
           >
             {loading ? (
               <span className="flex items-center gap-2">
@@ -236,7 +241,8 @@ export const AIQueryPage: React.FC = () => {
               </>
             )}
           </button>
-        </div>
+        </form>
+        {loading && <span role="status" className="sr-only">Analyzing your question</span>}
 
         {/* Suggestion Pills */}
         <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -246,7 +252,9 @@ export const AIQueryPage: React.FC = () => {
           {promptSuggestions.map((s, idx) => (
             <button
               key={idx}
-              onClick={() => handleAsk(s)}
+              disabled={loading}
+              type="button"
+              onClick={() => setQuestion(s)}
               className="text-[11px] px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700/60 transition-colors"
             >
               {s}
@@ -256,12 +264,13 @@ export const AIQueryPage: React.FC = () => {
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl flex items-center gap-3 text-xs font-medium border bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-500/30 text-rose-800 dark:text-rose-300">
+        <div role="alert" className="p-4 rounded-xl flex items-center gap-3 text-xs font-medium border bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-500/30 text-rose-800 dark:text-rose-300">
           <AlertCircle className="h-4 w-4 flex-shrink-0" />
-          <span>{error}</span>
+          <span className="min-w-0 break-words">{error}</span>
         </div>
       )}
 
+      {selectedHistoryId && <p className="break-words text-sm">History result from <strong>{historySource?.dataset || "an earlier dataset"}</strong>{historySource?.dataset_version != null ? ` · Version ${historySource.dataset_version}` : ''}</p>}
       {/* Query Result Section */}
       {currentResponse && (
         <div className="space-y-6">
@@ -350,6 +359,7 @@ export const AIQueryPage: React.FC = () => {
                   height={420}
                   title={currentResponse.question}
                   sourcePage="AI Query"
+                  source={chartSource}
                 />
               </div>
             )}
@@ -373,6 +383,7 @@ export const AIQueryPage: React.FC = () => {
                       height={420}
                       title={currentResponse.question}
                       sourcePage="AI Query"
+                      source={chartSource}
                     />
                   </div>
                 ))}
@@ -464,7 +475,7 @@ export const AIQueryPage: React.FC = () => {
             {history.length > 0 && (
               <button
                 onClick={handleClearHistory}
-                className="p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/20 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
+                className="p-2 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/20 text-rose-700 dark:text-rose-300 transition-colors"
                 title="Clear history"
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -484,20 +495,19 @@ export const AIQueryPage: React.FC = () => {
               return (
                 <div
                   key={item.id}
-                  onClick={() => handleSelectHistoryItem(item)}
-                  className={`p-3 rounded-xl border cursor-pointer transition-all space-y-1 shadow-sm ${
+                  className={`p-3 rounded-xl border transition-all space-y-1 shadow-sm ${
                     isSelected
                       ? "bg-blue-50/80 dark:bg-blue-950/40 border-blue-400 dark:border-blue-500/50 ring-1 ring-blue-400/30"
                       : "bg-slate-50 dark:bg-slate-800/30 hover:bg-blue-50/50 dark:hover:bg-slate-800/70 border-slate-200 dark:border-slate-700/50"
                   }`}
                 >
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-900 dark:text-white truncate max-w-md flex items-center gap-1.5">
+                    <button type="button" aria-pressed={isSelected} onClick={() => handleSelectHistoryItem(item)} className="min-w-0 break-words text-left font-semibold text-slate-900 dark:text-white">
                       {isSelected && (
                         <span className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
                       )}
                       "{item.question}"
-                    </span>
+                    </button>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
                         {new Date(item.timestamp).toLocaleTimeString()}
@@ -516,7 +526,7 @@ export const AIQueryPage: React.FC = () => {
                     </div>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-1">
-                    {item.result_summary}
+                    {item.dataset} · {item.result_summary}
                   </p>
                 </div>
               );

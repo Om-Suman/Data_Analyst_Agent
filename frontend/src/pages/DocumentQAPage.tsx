@@ -1,3 +1,4 @@
+import { DatasetEmptyState } from "../components/DatasetEmptyState";
 import React, { useState } from "react";
 import {
   FileText,
@@ -22,7 +23,7 @@ export const DocumentQAPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const handleAsk = async () => {
-    if (!question.trim() || !hasDataset) return;
+    if (!question.trim() || !hasDataset || loading) return;
     setLoading(true);
     setError(null);
     try {
@@ -37,16 +38,11 @@ export const DocumentQAPage: React.FC = () => {
 
   if (!hasDataset || !activeDataset?.is_text) {
     return (
-      <div className="p-8 text-center text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900/30 space-y-3 shadow-sm">
-        <FileText className="h-10 w-10 mx-auto text-amber-500/70 dark:text-slate-600" />
-        <p className="text-sm text-slate-800 dark:text-slate-300 font-bold">
-          No Document Loaded in Active Workspace
-        </p>
-        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-          Please upload a document (.pdf, .docx, .txt, or OCR image) on the
-          Upload page, or set a document as the active workspace.
-        </p>
-      </div>
+      <DatasetEmptyState
+        title="Document Questions"
+        description="Ask questions about a document and see which passages support the answers."
+        document
+      />
     );
   }
 
@@ -65,19 +61,18 @@ export const DocumentQAPage: React.FC = () => {
 
       {/* Question Input */}
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4 sm:p-5 space-y-3 shadow-sm">
-        <div className="flex gap-2">
+        <label htmlFor="document-question" className="block text-sm font-semibold">Your document question</label>
+        <form className="flex flex-col gap-2 sm:flex-row" onSubmit={(event) => { event.preventDefault(); void handleAsk(); }}>
           <input
+            id="document-question"
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleAsk();
-            }}
             placeholder="Ask a question about this document..."
             className="flex-1 bg-slate-50 dark:bg-slate-950/80 border border-slate-300 dark:border-slate-700/80 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 shadow-inner transition-all"
           />
           <button
-            onClick={handleAsk}
+            type="submit"
             disabled={loading || !question.trim()}
             className="px-5 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold flex items-center gap-2 shadow-md shadow-amber-600/20 transition-all text-sm"
           >
@@ -93,11 +88,11 @@ export const DocumentQAPage: React.FC = () => {
               </>
             )}
           </button>
-        </div>
+        </form>
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl flex items-center gap-3 text-xs font-medium border bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-500/30 text-rose-800 dark:text-rose-300">
+        <div role="alert" className="p-4 rounded-xl flex items-center gap-3 text-xs font-medium border bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-500/30 text-rose-800 dark:text-rose-300">
           <AlertCircle className="h-4 w-4 flex-shrink-0" />
           <span>{error}</span>
         </div>

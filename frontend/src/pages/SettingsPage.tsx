@@ -16,7 +16,7 @@ import { useDataset } from "../context/DatasetContext";
 import { configApi } from "../api/client";
 
 export const SettingsPage: React.FC = () => {
-  const { config, refreshConfig, refreshDatasets } = useDataset();
+  const { config, refreshConfig, refreshDatasets, refreshPinnedCharts } = useDataset();
 
   const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
@@ -28,6 +28,8 @@ export const SettingsPage: React.FC = () => {
   const [defaultMissingThreshold, setDefaultMissingThreshold] = useState(50);
 
   const [saving, setSaving] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [message, setMessage] = useState<{
     type: "success" | "error";
     text: string;
@@ -83,16 +85,34 @@ export const SettingsPage: React.FC = () => {
   const handleResetSession = async () => {
     if (
       !window.confirm(
-        "Reset session? All active datasets, query history, and state in this browser will be cleared.",
+        "Reset workspace? This clears uploaded datasets, query history, and pinned charts from this session.",
       )
     )
       return;
+    setResetting(true);
     try {
       await configApi.resetSession();
-      await refreshDatasets();
+      await Promise.all([refreshDatasets(), refreshConfig(), refreshPinnedCharts()]);
       setMessage({ type: "success", text: "Session reset successfully." });
     } catch (err) {
-      console.error(err);
+      setMessage({ type: "error", text: "Could not reset the workspace. Try again." });
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  const handleCheckConnection = async () => {
+    setChecking(true);
+    setMessage(null);
+    try {
+      const { unavailable_models: unavailable } = await configApi.checkConnection();
+      setMessage(unavailable.length
+        ? { type: "error", text: `Connected to Groq. Unavailable saved models: ${unavailable.join(", ")}.` }
+        : { type: "success", text: "Connected to Groq. Your saved models are available." });
+    } catch (err: any) {
+      setMessage({ type: "error", text: err.response?.data?.detail || "Could not check the connection." });
+    } finally {
+      setChecking(false);
     }
   };
 
@@ -110,6 +130,7 @@ export const SettingsPage: React.FC = () => {
 
       {message && (
         <div
+          role={message.type === "error" ? "alert" : "status"}
           className={`p-4 rounded-xl flex items-center gap-3 text-xs font-medium border ${
             message.type === "success"
               ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300"
@@ -121,13 +142,13 @@ export const SettingsPage: React.FC = () => {
           ) : (
             <AlertCircle className="h-4 w-4" />
           )}
-          <span>{message.text}</span>
+          <span className="min-w-0 break-words">{message.text}</span>
         </div>
       )}
 
       {/* Groq API Key Card */}
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-5 sm:p-6 space-y-4 shadow-sm">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <Key className="h-4 w-4 text-amber-500 dark:text-amber-400" />
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-200">
@@ -136,17 +157,18 @@ export const SettingsPage: React.FC = () => {
           </div>
           <span className="text-[11px] px-2.5 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-mono font-medium">
             {config?.has_api_key
-              ? `Configured (${config.api_key_masked})`
-              : "Not Configured"}
+              ? "Key saved"
+              : "No key saved"}
           </span>
         </div>
 
         <div className="space-y-2 text-xs">
-          <label className="block text-slate-700 dark:text-slate-300 font-medium">
+          <label htmlFor="groq-key" className="block text-slate-700 dark:text-slate-300 font-medium">
             Update API Key
           </label>
           <div className="relative">
             <input
+              id="groq-key"
               type={showApiKey ? "text" : "password"}
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
@@ -157,6 +179,7 @@ export const SettingsPage: React.FC = () => {
             />
             <button
               type="button"
+              aria-label={showApiKey ? "Hide API key" : "Show API key"}
               onClick={() => setShowApiKey(!showApiKey)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
             >
@@ -172,6 +195,9 @@ export const SettingsPage: React.FC = () => {
             API tokens are stored securely in backend session memory and are
             never exposed to the frontend.
           </p>
+          <button type="button" disabled={saving || checking || resetting || !config?.has_api_key} onClick={handleCheckConnection} className="min-h-11 rounded-lg border px-3 font-semibold disabled:opacity-50">
+            {checking ? "Checking connection…" : "Test saved connection"}
+          </button>
         </div>
       </div>
 
@@ -190,6 +216,7 @@ export const SettingsPage: React.FC = () => {
               Primary LLM Model
             </label>
             <select
+              aria-label="Primary model preset"
               value={primaryModel}
               onChange={(e) => setPrimaryModel(e.target.value)}
               className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 mb-2 shadow-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
@@ -201,6 +228,7 @@ export const SettingsPage: React.FC = () => {
               ))}
             </select>
             <input
+              aria-label="Primary model ID"
               type="text"
               value={primaryModel}
               onChange={(e) => setPrimaryModel(e.target.value)}
@@ -214,6 +242,7 @@ export const SettingsPage: React.FC = () => {
               Fallback LLM Model (Optional)
             </label>
             <select
+              aria-label="Fallback model preset"
               value={fallbackModel}
               onChange={(e) => setFallbackModel(e.target.value)}
               className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 mb-2 shadow-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
@@ -226,6 +255,7 @@ export const SettingsPage: React.FC = () => {
               ))}
             </select>
             <input
+              aria-label="Fallback model ID"
               type="text"
               value={fallbackModel}
               onChange={(e) => setFallbackModel(e.target.value)}
@@ -251,6 +281,7 @@ export const SettingsPage: React.FC = () => {
               Max Output Tokens: {maxTokens}
             </label>
             <input
+              aria-label="Maximum output tokens"
               type="range"
               min="512"
               max="4096"
@@ -266,6 +297,7 @@ export const SettingsPage: React.FC = () => {
               Temperature: {temperature}
             </label>
             <input
+              aria-label="Temperature"
               type="range"
               min="0.0"
               max="1.0"
@@ -278,25 +310,24 @@ export const SettingsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex items-center justify-between pt-2">
-        <button
-          onClick={handleResetSession}
-          className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-rose-50 dark:bg-slate-900 dark:hover:bg-rose-950/40 text-slate-700 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-300 border border-slate-200 hover:border-rose-200 dark:border-slate-800 dark:hover:border-rose-500/30 text-xs font-semibold flex items-center gap-2 transition-all shadow-sm"
-        >
-          <RotateCcw className="h-4 w-4" />
-          Reset Workspace Session
-        </button>
-
+      <div className="flex justify-end pt-2">
         <button
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || checking || resetting}
           className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-2 shadow-md shadow-blue-600/20 transition-all"
         >
           <Save className="h-4 w-4" />
           {saving ? "Saving..." : "Save Settings"}
         </button>
       </div>
+      <section className="space-y-3 border-t border-slate-200 pt-5 dark:border-slate-700" aria-labelledby="workspace-reset">
+        <h3 id="workspace-reset" className="font-semibold">Reset workspace</h3>
+        <p className="text-sm text-slate-600 dark:text-slate-300">This clears uploaded datasets, query history, and pinned charts from this session.</p>
+        <button type="button" disabled={saving || checking || resetting} onClick={handleResetSession} className="flex min-h-11 items-center gap-2 rounded-xl border border-rose-300 px-4 text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-800 dark:text-rose-300 dark:hover:bg-rose-950">
+          <RotateCcw className="h-4 w-4" />
+          {resetting ? "Resetting workspace…" : "Reset workspace session"}
+        </button>
+      </section>
     </div>
   );
 };

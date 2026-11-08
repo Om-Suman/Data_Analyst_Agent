@@ -2,6 +2,53 @@ import io
 import pytest
 
 
+def test_cleaning_rejects_preview_from_another_dataset(client):
+    client.post("/api/datasets/sample", json={"sample_name": "Sales Data"})
+    dataset = client.get("/api/datasets").json()["datasets"][0]
+    plan = {
+        "expected_dataset": dataset["name"],
+        "expected_version": dataset["version"],
+        "expected_uploaded_at": dataset["uploaded_at"],
+    }
+    assert client.post("/api/cleaning/preview", json=plan).status_code == 200
+    client.post("/api/datasets/sample", json={"sample_name": "Employee Data"})
+    refused = client.post("/api/cleaning/apply", json=plan)
+    assert refused.status_code == 400
+    assert "dataset changed" in refused.json()["detail"]
+    current = next(item for item in client.get("/api/datasets").json()["datasets"] if item["is_active"])
+    assert current["name"] == "Employee Data"
+    assert current["version"] == 1
+
+
+def test_sqlite_extension_upload(client, tmp_path):
+    import sqlite3
+
+    path = tmp_path / "table.sqlite"
+    connection = sqlite3.connect(path)
+    try:
+        connection.execute("CREATE TABLE sample (score INTEGER)")
+        connection.execute("INSERT INTO sample VALUES (42)")
+        connection.commit()
+    finally:
+        connection.close()
+    result = client.post("/api/datasets/upload", files={"files": (path.name, path.read_bytes())})
+    assert result.status_code == 200, result.json()
+    assert client.get("/api/datasets/preview").json()["data"] == [{"score": 42}]
+
+
+def test_connection_check_reports_unavailable_models(client, monkeypatch):
+    from unittest.mock import Mock
+
+    client.post("/api/config", json={"groq_api_key": "synthetic-key", "primary_model": "listed", "fallback_model": "missing"})
+    response = Mock(status_code=200)
+    response.json.return_value = {"data": [{"id": "listed", "active": True}]}
+    request = Mock(return_value=response)
+    monkeypatch.setattr("backend.api.routes_config.requests.get", request)
+    result = client.get("/api/config/connection")
+    assert result.json() == {"unavailable_models": ["missing"]}
+    assert request.call_args.kwargs["headers"]["Authorization"] == "Bearer synthetic-key"
+
+
 def test_health(client):
     response = client.get("/api/health")
     assert response.status_code == 200
@@ -219,13 +266,17 @@ def test_anomaly_detection_endpoint(client):
 
     res = client.post(
         "/api/anomalies/run",
-        json={"method": "Z-Score", "threshold": 2.5},
+        json={"method": "Z-Score", "threshold": 2.5, "columns": ["sales"]},
     )
     assert res.status_code == 200
     data = res.json()
     assert data["method"] == "Z-Score"
     assert "n_anomalies" in data
     assert "figure_spec" in data
+    assert data["columns_used"] == ["sales"]
+    assert all("customer_id" in row for row in data["anomalous_rows"])
+    client.post("/api/datasets/sample", json={"sample_name": "Employee Data"})
+    assert client.get("/api/anomalies/download").status_code == 404
 
 
 def test_reports_endpoints(client):
@@ -238,6 +289,9 @@ def test_reports_endpoints(client):
     )
     assert html_res.status_code == 200
     assert "<!DOCTYPE html>" in html_res.text
+    assert "Sales Data · Version 1" in html_res.text
+    assert "Data Sample (First 20 Rows)" in html_res.text
+    assert "Data Sample (First 20 Rows)" not in client.post("/api/reports/html", json={}).text
 
     # Excel report
     excel_res = client.get("/api/reports/excel")
@@ -258,20 +312,65 @@ def test_quick_insights(client):
     assert len(data["insights"]) > 0
 
 
-def test_document_qa_endpoint(client):
-    text_content = "Antigravity is an advanced agentic AI platform. It supports multi-agent systems and safe execution sandboxes."
-    files = {"files": ("readme.txt", text_content.encode("utf-8"), "text/plain")}
+@pytest.mark.parametrize("extension", ["txt", "pdf", "docx"])
+def test_document_qa_endpoint(client, monkeypatch, extension):
+    from modules import document_rag
+
+    text_content = "The verification project deadline is September 14."
+    if extension == "pdf":
+        import fitz
+
+        with fitz.open() as pdf:
+            pdf.new_page().insert_text((72, 72), text_content)
+            content = pdf.tobytes()
+    elif extension == "docx":
+        from docx import Document
+
+        document = Document()
+        document.add_table(rows=1, cols=1).cell(0, 0).text = text_content
+        stream = io.BytesIO()
+        document.save(stream)
+        content = stream.getvalue()
+    else:
+        content = text_content.encode("utf-8")
+
+    def fail_on_upload_indexing():
+        pytest.fail("Upload should not initialize the embedding model")
+
+    monkeypatch.setattr(document_rag, "llamaindex_available", fail_on_upload_indexing)
+    filename = f"verification.{extension}"
+    files = {"files": (filename, content, "application/octet-stream")}
     upload_res = client.post("/api/datasets/upload", files=files)
-    assert upload_res.status_code == 200
+    assert upload_res.status_code == 200, upload_res.json()
+    assert upload_res.json()["active_dataset"] == filename
+    assert client.get("/api/datasets").json()["datasets"][0]["is_text"] is True
+
+    monkeypatch.setattr(document_rag, "llamaindex_available", lambda: False)
+    monkeypatch.setattr(document_rag, "query_llm", lambda **kwargs: ("❌ unavailable", "none"))
 
     qa_res = client.post(
         "/api/document/qa",
-        json={"question": "What is Antigravity?"},
+        json={"question": "What is the verification project deadline?"},
     )
     assert qa_res.status_code == 200
     data = qa_res.json()
-    assert "answer" in data
-    assert len(data["sources"]) > 0
+    assert data["error"] == "AI answer unavailable"
+    assert "September 14" in data["sources"][0]["text"]
+
+
+def test_upload_rejects_pdf_without_extractable_text(client):
+    import fitz
+
+    with fitz.open() as pdf:
+        pdf.new_page()
+        content = pdf.tobytes()
+    result = client.post(
+        "/api/datasets/upload",
+        files={"files": ("empty.pdf", content, "application/pdf")},
+    )
+    assert result.status_code == 400
+    assert "upload a searchable copy" in result.json()["detail"]
+    assert client.get("/api/datasets").json()["datasets"] == []
 
 
 def test_sql_query_endpoint(client):

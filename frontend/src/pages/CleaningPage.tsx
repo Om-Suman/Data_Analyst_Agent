@@ -1,3 +1,4 @@
+import { DatasetEmptyState } from "../components/DatasetEmptyState";
 import React, { useState, useEffect } from 'react';
 import {
   Sparkles,
@@ -24,14 +25,15 @@ import { DataTable } from '../components/DataTable';
 import { useToast } from '../components/Toast';
 
 export const CleaningPage: React.FC = () => {
-  const { activeDataset, hasDataset, preview, refreshDatasets, refreshPreview } = useDataset();
+  const { activeDataset, hasDataset: hasActiveDataset, preview, refreshDatasets } = useDataset();
+  const hasDataset = hasActiveDataset && !activeDataset?.is_text;
   const { success, error: toastError } = useToast();
 
   const [activeTab, setActiveTab] = useState<'pipeline' | 'columns' | 'history'>('pipeline');
   const [quality, setQuality] = useState<QualityScoreResponse | null>(null);
   const [versions, setVersions] = useState<VersionItem[]>([]);
   const [loadingQuality, setLoadingQuality] = useState(false);
-  const [previewReport, setPreviewReport] = useState<CleaningReportResponse | null>(null);
+  const [review, setReview] = useState<{ key: string; report: CleaningReportResponse } | null>(null);
   const [applying, setApplying] = useState(false);
   const [previewing, setPreviewing] = useState(false);
 
@@ -54,6 +56,20 @@ export const CleaningPage: React.FC = () => {
   const [transforming, setTransforming] = useState(false);
 
   const columns = preview?.columns || [];
+  const rules = {
+    missing_strategy: missingStrategy,
+    remove_duplicates: removeDuplicates,
+    fix_dtypes: fixDtypes,
+    normalize_column_names: normalizeNames,
+    outlier_method: outlierMethod,
+    outlier_threshold: outlierThreshold,
+    iqr_factor: iqrFactor,
+    expected_dataset: activeDataset?.name,
+    expected_version: activeDataset?.version,
+    expected_uploaded_at: activeDataset?.uploaded_at,
+  };
+  const rulesKey = JSON.stringify(rules);
+  const previewReport = review?.key === rulesKey ? review.report : null;
 
   useEffect(() => {
     if (columns.length > 0 && !selectedColumn) {
@@ -70,7 +86,7 @@ export const CleaningPage: React.FC = () => {
       const v = await cleaningApi.getVersions();
       setVersions(v.versions);
     } catch (err) {
-      console.error(err);
+      toastError('Could not load quality or history', 'Reload the page to try again.');
     } finally {
       setLoadingQuality(false);
     }
@@ -83,16 +99,8 @@ export const CleaningPage: React.FC = () => {
   const handlePreview = async () => {
     setPreviewing(true);
     try {
-      const rep = await cleaningApi.previewCleaning({
-        missing_strategy: missingStrategy,
-        remove_duplicates: removeDuplicates,
-        fix_dtypes: fixDtypes,
-        normalize_column_names: normalizeNames,
-        outlier_method: outlierMethod,
-        outlier_threshold: outlierThreshold,
-        iqr_factor: iqrFactor,
-      });
-      setPreviewReport(rep);
+      const rep = await cleaningApi.previewCleaning(rules);
+      setReview({ key: rulesKey, report: rep });
       success('Dry-Run Computed', 'Previewing cleaning transformations below.');
     } catch (err: any) {
       toastError('Preview Failed', err.response?.data?.detail || 'Failed to preview cleaning.');
@@ -102,22 +110,13 @@ export const CleaningPage: React.FC = () => {
   };
 
   const handleApply = async () => {
+    if (!previewReport || applying || previewing) return;
     setApplying(true);
     try {
-      const rep = await cleaningApi.applyCleaning({
-        missing_strategy: missingStrategy,
-        remove_duplicates: removeDuplicates,
-        fix_dtypes: fixDtypes,
-        normalize_column_names: normalizeNames,
-        outlier_method: outlierMethod,
-        outlier_threshold: outlierThreshold,
-        iqr_factor: iqrFactor,
-      });
-      setPreviewReport(rep);
-      success('Cleaning Applied', `Dataset updated to v${(activeDataset?.version || 1) + 1}`);
+      await cleaningApi.applyCleaning(rules);
+      setReview(null);
+      success('Cleaning Applied', 'A new dataset version has been saved.');
       await refreshDatasets();
-      await refreshPreview();
-      await fetchQualityAndVersions();
     } catch (err: any) {
       toastError('Apply Failed', err.response?.data?.detail || 'Failed to apply cleaning.');
     } finally {
@@ -143,8 +142,6 @@ export const CleaningPage: React.FC = () => {
         setNewName('');
         setExpression('');
         await refreshDatasets();
-        await refreshPreview();
-        await fetchQualityAndVersions();
       }
     } catch (err: any) {
       toastError('Transform Failed', err.response?.data?.detail || 'Failed to execute column operation.');
@@ -159,8 +156,6 @@ export const CleaningPage: React.FC = () => {
       await cleaningApi.rollbackVersion(versionNumber);
       success('Dataset Restored', `Successfully rolled back to version ${versionNumber}!`);
       await refreshDatasets();
-      await refreshPreview();
-      await fetchQualityAndVersions();
     } catch (err: any) {
       toastError('Rollback Failed', err.response?.data?.detail || 'Rollback failed.');
     }
@@ -168,9 +163,10 @@ export const CleaningPage: React.FC = () => {
 
   if (!hasDataset) {
     return (
-      <div className="p-8 text-center text-slate-500 border border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-100/50 dark:bg-slate-900/30">
-        Please load or select a dataset first to use the Data Cleaning tools.
-      </div>
+      <DatasetEmptyState
+        title="Data Cleaning"
+        description="Review missing values, duplicates, and column types before making changes."
+      />
     );
   }
 
@@ -197,8 +193,8 @@ export const CleaningPage: React.FC = () => {
       </div>
 
       {/* Quality Overview KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className={`rounded-2xl border p-5 flex items-center justify-between shadow-sm ${gradeColor}`}>
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-2 sm:gap-4">
+        <div className={`flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-2xl border p-3 sm:p-5 ${gradeColor}`}>
           <div>
             <p className="text-xs uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">Quality Score</p>
             <p className="text-3xl font-extrabold mt-1 text-slate-900 dark:text-white font-mono">
@@ -236,7 +232,7 @@ export const CleaningPage: React.FC = () => {
       </div>
 
       {/* Tabs Navigation */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
         <button
           onClick={() => setActiveTab('pipeline')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
@@ -246,7 +242,7 @@ export const CleaningPage: React.FC = () => {
           }`}
         >
           <Sparkles className="h-4 w-4" />
-          Automated Pipeline
+          Cleaning rules
         </button>
 
         <button
@@ -258,7 +254,7 @@ export const CleaningPage: React.FC = () => {
           }`}
         >
           <Wrench className="h-4 w-4" />
-          Column Engineering Studio
+          Edit columns
         </button>
 
         <button
@@ -347,7 +343,8 @@ export const CleaningPage: React.FC = () => {
                 </label>
               </div>
 
-              <div className="flex gap-2.5 pt-3">
+              {!previewReport && <p className="text-sm text-slate-600 dark:text-slate-300">{review ? 'Rules changed. Preview again before applying.' : 'Preview the changes before applying them.'}</p>}
+              <div className="flex flex-wrap gap-2.5 pt-3">
                 <button
                   onClick={handlePreview}
                   disabled={previewing || applying}
@@ -358,8 +355,8 @@ export const CleaningPage: React.FC = () => {
                 </button>
                 <button
                   onClick={handleApply}
-                  disabled={applying || previewing}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-md shadow-blue-600/20 transition-all"
+                  disabled={!previewReport || applying || previewing}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-colors disabled:opacity-50"
                 >
                   <Check className="h-4 w-4" />
                   {applying ? 'Applying...' : 'Apply & Save'}
@@ -370,7 +367,7 @@ export const CleaningPage: React.FC = () => {
 
           <div className="lg:col-span-2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 shadow-sm space-y-4">
             <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-              {previewReport ? 'Cleaning Report & Transformed Sample' : 'Current Clean Preview'}
+              {previewReport ? 'Changes to review before applying' : 'Current data sample'}
             </h3>
 
             {previewReport ? (

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import { DatasetEmptyState } from "../components/DatasetEmptyState";
+import React, { useState } from "react";
 import {
   AlertTriangle,
   Sliders,
@@ -16,8 +17,14 @@ import { PlotlyChart } from "../components/PlotlyChart";
 import { DataTable } from "../components/DataTable";
 
 export const AnomaliesPage: React.FC = () => {
-  const { hasDataset } = useDataset();
+  const { hasDataset: hasActiveDataset, activeDataset: selectedDataset, preview } = useDataset();
+  const hasDataset = hasActiveDataset && !selectedDataset?.is_text;
 
+  const numericColumns = preview?.name === selectedDataset?.name ? preview?.numeric_cols || [] : [];
+  const [selection, setSelection] = useState<string[] | null>(null);
+  const columns = selection ?? numericColumns.filter(column =>
+    !/(^|[_\s-])(id|identifier)$/i.test(column) && !/[a-z](?:Id|ID)$/.test(column),
+  );
   const [method, setMethod] = useState("Isolation Forest");
   const [contamination, setContamination] = useState(0.05);
   const [threshold, setThreshold] = useState(3.0);
@@ -30,7 +37,7 @@ export const AnomaliesPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const handleRun = async () => {
-    if (!hasDataset) return;
+    if (!hasDataset || !columns.length || loading) return;
     setLoading(true);
     setError(null);
     try {
@@ -39,6 +46,7 @@ export const AnomaliesPage: React.FC = () => {
         contamination: contamination,
         threshold: threshold,
         factor: factor,
+        columns,
       });
       setAnomalyResult(res);
     } catch (err: any) {
@@ -48,17 +56,12 @@ export const AnomaliesPage: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    if (hasDataset && !anomalyResult) {
-      handleRun();
-    }
-  }, [hasDataset]);
-
   if (!hasDataset) {
     return (
-      <div className="p-8 text-center text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900/30 shadow-sm">
-        Please load or select a dataset first to run anomaly detection.
-      </div>
+      <DatasetEmptyState
+        title="Anomaly Detection"
+        description="Scan numeric columns for unusual values and inspect the rows that stand out."
+      />
     );
   }
 
@@ -70,8 +73,7 @@ export const AnomaliesPage: React.FC = () => {
           Anomaly & Outlier Detection
         </h2>
         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Detect outliers, erroneous transactions, and irregular patterns with
-          Isolation Forest, Z-Score, or IQR
+          Flag unusual rows for review using the numeric fields you choose.
         </p>
       </div>
 
@@ -84,12 +86,21 @@ export const AnomaliesPage: React.FC = () => {
           </span>
         </div>
 
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-semibold">Numeric fields to analyze</legend>
+          <p className="text-sm text-slate-600 dark:text-slate-300">Identifier columns start unchecked. Review the selection before running.</p>
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            {numericColumns.map(column => <label key={column} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={columns.includes(column)} onChange={event => setSelection(event.target.checked ? [...columns, column] : columns.filter(item => item !== column))} />{column}</label>)}
+            {numericColumns.length === 0 && <p>No numeric fields are available.</p>}
+          </div>
+        </fieldset>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
           <div>
             <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">
               Detection Algorithm
             </label>
             <select
+              aria-label="Detection algorithm"
               value={method}
               onChange={(e) => setMethod(e.target.value)}
               className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 shadow-sm"
@@ -105,7 +116,7 @@ export const AnomaliesPage: React.FC = () => {
           {method === "Isolation Forest" && (
             <div>
               <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">
-                Contamination Rate: {(contamination * 100).toFixed(0)}%
+                Expected share flagged: {(contamination * 100).toFixed(0)}%
               </label>
               <input
                 type="range"
@@ -156,7 +167,7 @@ export const AnomaliesPage: React.FC = () => {
           <div className="flex items-end">
             <button
               onClick={handleRun}
-              disabled={loading}
+              disabled={loading || columns.length === 0}
               className="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold flex items-center justify-center gap-2 shadow-md shadow-rose-600/20 transition-all text-xs"
             >
               <Play className="h-3.5 w-3.5" />
@@ -179,7 +190,7 @@ export const AnomaliesPage: React.FC = () => {
           {/* KPI Row */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <MetricCard
-              title="Flagged Anomalies"
+              title="Rows flagged for review"
               value={anomalyResult.n_anomalies.toLocaleString()}
               subtitle={`Algorithm: ${anomalyResult.method}`}
               icon={ShieldAlert}
@@ -206,7 +217,8 @@ export const AnomaliesPage: React.FC = () => {
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-200">
               Anomaly Projection Visualization (PCA 2D Cluster)
             </h3>
-            <PlotlyChart spec={anomalyResult.figure_spec} height={460} />
+            <p className="mb-3 break-words text-sm">Fields used: {anomalyResult.columns_used.join(", ")}</p>
+            <PlotlyChart spec={anomalyResult.figure_spec} height={460} title={`${anomalyResult.method} anomaly review`} sourcePage="Anomaly Detection" showPlotTitle={false} />
           </div>
 
           {/* Flagged Rows Table */}

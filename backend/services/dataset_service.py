@@ -9,7 +9,6 @@ import pandas as pd
 
 from backend.session.state import SessionState
 from modules.ingestion import parse_uploaded_file, compute_metadata
-from modules.document_rag import build_document_bundle, store_document_bundle
 
 
 def to_json_compatible(obj: Any) -> Any:
@@ -52,20 +51,11 @@ def sanitize_dataframe_for_json(df: pd.DataFrame) -> list[dict[str, Any]]:
     return records
 
 
-class UploadFileAdapter:
-    """Wrapper around FastAPI UploadFile to match ingestion module interface."""
+class UploadFileAdapter(io.BytesIO):
+    """Named byte stream for file parsers."""
     def __init__(self, name: str, data: bytes):
+        super().__init__(data)
         self.name = name
-        self._data = data
-        self._io = io.BytesIO(data)
-
-    def read(self, size: int = -1) -> bytes:
-        if size == -1:
-            return self._data
-        return self._io.read(size)
-
-    def seek(self, offset: int, whence: int = 0):
-        return self._io.seek(offset, whence)
 
 
 def make_sales_sample() -> pd.DataFrame:
@@ -133,10 +123,15 @@ def process_and_register_file(
             "source": filename,
         }
     elif data_type == "text":
-        content = meta.get("content", "")
-        session.register_text_dataset(filename, content, source=filename, meta=meta)
-        bundle = build_document_bundle(content, metadata={"name": filename, **meta})
-        store_document_bundle(filename, bundle, store=session.document_indexes)
+        content = meta.get("content", "").strip()
+        if not content:
+            raise ValueError(
+                f"No readable text found in '{filename}'. For a scanned PDF, run OCR "
+                "and upload a searchable copy. For other documents, check that the file contains text."
+            )
+        metadata = {key: value for key, value in meta.items() if key != "content"}
+        session.register_text_dataset(filename, content, source=filename, meta=metadata)
+        session.document_indexes.pop(filename, None)
         return {
             "name": filename,
             "type": "text",

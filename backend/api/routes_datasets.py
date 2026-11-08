@@ -102,9 +102,10 @@ def set_active_dataset(
     req: SetActiveRequest,
     session: SessionState = Depends(get_current_session),
 ):
-    if req.name not in session.datasets:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Dataset '{req.name}' not found.")
-    session.active_dataset = req.name
+    with session._lock:
+        if req.name not in session.datasets:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Dataset '{req.name}' not found.")
+        session.active_dataset = req.name
     return {"status": "ok", "active_dataset": req.name}
 
 
@@ -190,6 +191,8 @@ def pin_chart(
             figure_spec=req.figure_spec,
             source_page=req.source_page or "Visualizations",
             notes=req.notes or "",
+            dataset_name=req.dataset_name,
+            dataset_version=req.dataset_version,
         )
         return item
     except Exception as exc:

@@ -8,6 +8,7 @@ class AnomalyRequest(BaseModel):
     contamination: float = Field(default=0.05, ge=0.01, le=0.5)
     threshold: float = Field(default=3.0, ge=1.0, le=10.0)
     factor: float = Field(default=1.5, ge=0.5, le=5.0)
+    columns: Optional[list[str]] = None
 
 
 class AnomalyResponse(BaseModel):

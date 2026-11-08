@@ -166,6 +166,7 @@ export interface QueryHistoryItem {
   code: string;
   result_summary: string;
   dataset: string;
+  dataset_version?: number | null;
   route?: string;
   model_used?: string;
   insights?: string;
@@ -304,6 +305,8 @@ export interface PinChartRequest {
   figure_spec: any;
   source_page?: string;
   notes?: string;
+  dataset_name?: string | null;
+  dataset_version?: number | null;
 }
 
 export interface PinnedChartItem {
@@ -314,6 +317,8 @@ export interface PinnedChartItem {
   pinned_at: string;
   source_page: string;
   notes: string;
+  dataset_name?: string | null;
+  dataset_version?: number | null;
 }
 
 export interface PinnedDashboardResponse {

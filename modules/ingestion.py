@@ -153,7 +153,7 @@ def parse_uploaded_file(file) -> tuple[pd.DataFrame | None, dict, str]:
         elif suffix == "json":
             df, meta = load_json(file)
             return df, meta, "dataframe"
-        elif suffix == "db":
+        elif suffix in ("db", "sqlite"):
             tables = load_sqlite(file)
             if tables:
                 first = list(tables.keys())[0]
@@ -167,13 +167,19 @@ def parse_uploaded_file(file) -> tuple[pd.DataFrame | None, dict, str]:
         elif suffix == "docx":
             import docx as docxlib
             doc = docxlib.Document(file)
-            content = "\n".join(p.text for p in doc.paragraphs)
+            paragraphs = [paragraph.text for paragraph in doc.paragraphs]
+            table_rows = [
+                " | ".join(cell.text for cell in row.cells if cell.text.strip())
+                for table in doc.tables
+                for row in table.rows
+            ]
+            content = "\n".join(paragraphs + table_rows)
             return None, {"type": "text", "content": content}, "text"
         elif suffix == "pdf":
             import fitz
             raw = file.read()
-            doc = fitz.open(stream=raw, filetype="pdf")
-            content = "\n".join(page.get_text() for page in doc)
+            with fitz.open(stream=raw, filetype="pdf") as doc:
+                content = "\n".join(page.get_text() for page in doc)
             return None, {"type": "text", "content": content}, "text"
         elif suffix in ("png", "jpg", "jpeg"):
             from PIL import Image

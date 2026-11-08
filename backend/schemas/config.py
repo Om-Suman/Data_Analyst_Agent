@@ -8,7 +8,7 @@ class ConfigResponse(BaseModel):
     api_key_masked: str = Field(description="Masked API key (e.g. *******1234)")
     primary_model: str = Field(default="qwen/qwen3.8-27b")
     fallback_model: str = Field(default="openai/gpt-oss-120b")
-    theme: str = Field(default="dark")
+    theme: str = Field(default="light")
     max_tokens: int = Field(default=2048)
     temperature: float = Field(default=0.3)
     default_outlier: str = Field(default="none")

@@ -22,6 +22,7 @@ def execute_anomaly_detection_route(
             contamination=req.contamination,
             threshold=req.threshold,
             factor=req.factor,
+            columns=req.columns,
         )
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
@@ -29,7 +30,7 @@ def execute_anomaly_detection_route(
 
 @router.get("/download")
 def download_cached_anomalies(session: SessionState = Depends(get_current_session)):
-    res = session.cached_anomaly
+    res = session.get_cached_analysis("anomaly")
     if not res or res.anomaly_df is None or res.anomaly_df.empty:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No anomalous records available to download.")
 

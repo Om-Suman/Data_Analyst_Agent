@@ -30,7 +30,7 @@ def execute_forecast_route(
 
 @router.get("/download")
 def download_cached_forecast(session: SessionState = Depends(get_current_session)):
-    fc = session.cached_forecast
+    fc = session.get_cached_analysis("forecast")
     if not fc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No forecast available to download.")
 

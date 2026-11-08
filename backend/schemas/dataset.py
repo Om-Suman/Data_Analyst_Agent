@@ -48,6 +48,8 @@ class PinChartRequest(BaseModel):
     figure_spec: dict[str, Any]
     source_page: Optional[str] = "Visualizations"
     notes: Optional[str] = ""
+    dataset_name: Optional[str] = None
+    dataset_version: Optional[int] = None
 
 
 class PinnedChartItem(BaseModel):
@@ -58,6 +60,8 @@ class PinnedChartItem(BaseModel):
     pinned_at: str
     source_page: str
     notes: str = ""
+    dataset_name: Optional[str] = None
+    dataset_version: Optional[int] = None
 
 
 class PinnedDashboardResponse(BaseModel):

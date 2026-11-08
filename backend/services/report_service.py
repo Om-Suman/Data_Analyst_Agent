@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 from datetime import datetime
+from html import escape
 from typing import Any
 import numpy as np
 import pandas as pd
@@ -13,17 +14,18 @@ from modules.insights import generate_statistical_insights
 
 def generate_html_report(
     session: SessionState,
-    include_sample: bool = True,
+    include_sample: bool = False,
     include_stats: bool = True,
     include_insights: bool = True,
 ) -> str:
-    df = session.get_active_df()
-    name = session.active_dataset or "Dataset"
+    record = session.get_active_record()
+    df = record.get("df") if record else None
     if df is None:
         raise ValueError("No active dataset to generate report for.")
 
+    name = escape(f"{record['name']} · Version {record['version']}")
     static_insights = generate_statistical_insights(df)
-    ai_insights = session.last_insights or {}
+    ai_insights = session.get_cached_analysis("insights", session.dataset_identity(record)) or {}
 
     numeric = df.select_dtypes(include=np.number)
     stats_html = numeric.describe().round(4).to_html(classes="table") if not numeric.empty and include_stats else ""
@@ -32,9 +34,9 @@ def generate_html_report(
 
     insights_section = ""
     if include_insights and ai_insights:
-        exec_sum = ai_insights.get("executive_summary", "")
-        findings = "".join(f"<li>{f}</li>" for f in ai_insights.get("key_findings", []))
-        recs = "".join(f"<li>{r}</li>" for r in ai_insights.get("recommendations", []))
+        exec_sum = escape(str(ai_insights.get("executive_summary", "")))
+        findings = "".join(f"<li>{escape(str(f))}</li>" for f in ai_insights.get("key_findings", []))
+        recs = "".join(f"<li>{escape(str(r))}</li>" for r in ai_insights.get("recommendations", []))
         insights_section = f"""
         <h2>🤖 AI Business Insights</h2>
         <div class='card'><p>{exec_sum}</p></div>
@@ -42,7 +44,7 @@ def generate_html_report(
         <h3>Recommendations</h3><ul>{recs}</ul>
         """
 
-    static_items = "".join(f"<li>{i}</li>" for i in static_insights)
+    static_items = "".join(f"<li>{escape(str(i))}</li>" for i in static_insights)
 
     return f"""<!DOCTYPE html>
 <html lang='en'>
@@ -97,12 +99,14 @@ def generate_html_report(
 
 
 def generate_excel_report(session: SessionState) -> bytes:
-    df = session.get_active_df()
+    record = session.get_active_record()
+    df = record.get("df") if record else None
     if df is None:
         raise ValueError("No active dataset to generate Excel report for.")
 
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        pd.DataFrame([{"Dataset": record["name"], "Version": record["version"]}]).to_excel(writer, sheet_name="Source", index=False)
         # Sheet 1: Data
         df.to_excel(writer, sheet_name="Data", index=False)
 

@@ -28,7 +28,9 @@ def get_quick_insights(session: SessionState) -> list[str]:
 
 
 def get_ai_business_insights(session: SessionState, max_tokens: Optional[int] = 1500) -> dict[str, Any]:
-    df = session.get_active_df()
+    record = session.get_active_record()
+    identity = session.dataset_identity(record) if record else None
+    df = record.get("df") if record else None
     if df is None:
         raise ValueError("No active dataset.")
 
@@ -38,7 +40,7 @@ def get_ai_business_insights(session: SessionState, max_tokens: Optional[int] = 
 
     effective_tokens = max_tokens or session.config.get("max_tokens", 1500)
     data = generate_llm_insights(df, max_tokens=effective_tokens)
-    session.last_insights = data
+    session.cache_analysis("insights", identity, data)
     return data
 
 
@@ -50,7 +52,9 @@ def run_forecast(
     window: int = 7,
     alpha: float = 0.3,
 ) -> dict[str, Any]:
-    df = session.get_active_df()
+    record = session.get_active_record()
+    identity = session.dataset_identity(record) if record else None
+    df = record.get("df") if record else None
     if df is None:
         raise ValueError("No active dataset.")
     if target_col not in df.columns:
@@ -76,7 +80,7 @@ def run_forecast(
         except Exception:
             pass
 
-    session.cached_forecast = result
+    session.cache_analysis("forecast", identity, result)
 
     # Sanitize float lists for json
     def clean_floats(lst):
@@ -103,21 +107,26 @@ def run_anomaly_detection(
     contamination: float = 0.05,
     threshold: float = 3.0,
     factor: float = 1.5,
+    columns: Optional[list[str]] = None,
 ) -> dict[str, Any]:
-    df = session.get_active_df()
+    record = session.get_active_record()
+    identity = session.dataset_identity(record) if record else None
+    df = record.get("df") if record else None
     if df is None:
         raise ValueError("No active dataset.")
 
-    numeric = df.select_dtypes(include=np.number)
-    if numeric.empty:
-        raise ValueError("Anomaly detection requires at least one numeric column.")
+    numeric_columns = df.select_dtypes(include=np.number).columns.tolist()
+    selected = columns if columns is not None else numeric_columns
+    if not selected or any(column not in numeric_columns for column in selected):
+        raise ValueError("Choose at least one valid numeric column for anomaly detection.")
+    features = df[list(dict.fromkeys(selected))]
 
     if method == "Isolation Forest":
-        result = detect_isolation_forest(df, contamination=contamination)
+        result = detect_isolation_forest(features, contamination=contamination)
     elif method == "Z-Score":
-        result = detect_zscore(df, threshold=threshold)
+        result = detect_zscore(features, threshold=threshold)
     elif method == "IQR":
-        result = detect_iqr(df, factor=factor)
+        result = detect_iqr(features, factor=factor)
     else:
         raise ValueError(f"Unsupported anomaly method: {method}")
 
@@ -128,7 +137,9 @@ def run_anomaly_detection(
         except Exception:
             pass
 
-    session.cached_anomaly = result
+    if result.anomaly_indices:
+        result.anomaly_df = df.iloc[result.anomaly_indices].copy()
+    session.cache_analysis("anomaly", identity, result)
 
     anom_rows = []
     if isinstance(result.anomaly_df, pd.DataFrame) and not result.anomaly_df.empty:

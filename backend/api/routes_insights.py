@@ -48,7 +48,7 @@ def get_ai_insights_route(
 
 @router.get("/ai/cached", response_model=AIInsightsResponse)
 def get_cached_ai_insights(session: SessionState = Depends(get_current_session)):
-    data = session.last_insights or {}
+    data = session.get_cached_analysis("insights") or {}
     return AIInsightsResponse(
         executive_summary=data.get("executive_summary", ""),
         key_findings=data.get("key_findings", []),

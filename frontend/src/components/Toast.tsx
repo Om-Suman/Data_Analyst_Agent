@@ -61,7 +61,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <ToastContext.Provider value={{ showToast, success, error, info }}>
       {children}
       {/* Floating Toast Stack */}
-      <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2.5 max-w-md w-full pointer-events-none px-4 sm:px-0">
+      <div className="fixed inset-x-4 bottom-4 z-50 flex flex-col gap-2.5 pointer-events-none sm:inset-x-auto sm:right-5 sm:bottom-5 sm:w-full sm:max-w-md">
         {toasts.map((toast) => (
           <div
             key={toast.id}
@@ -77,12 +77,14 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             {toast.type === 'error' && <AlertCircle className="h-5 w-5 text-rose-400 flex-shrink-0 mt-0.5" />}
             {toast.type === 'info' && <Info className="h-5 w-5 text-blue-400 flex-shrink-0 mt-0.5" />}
 
-            <div className="flex-1 min-w-0">
+            <div role={toast.type === 'error' ? 'alert' : 'status'} className="flex-1 min-w-0 break-words">
               <h4 className="text-sm font-semibold tracking-tight">{toast.title}</h4>
               {toast.message && <p className="text-xs opacity-90 mt-0.5 leading-relaxed">{toast.message}</p>}
             </div>
 
             <button
+              type="button"
+              aria-label="Dismiss notification"
               onClick={() => removeToast(toast.id)}
               className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
             >

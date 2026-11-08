@@ -1,3 +1,4 @@
+import { DatasetEmptyState } from "../components/DatasetEmptyState";
 import React, { useState, useEffect } from "react";
 import {
   Compass,
@@ -19,7 +20,8 @@ import { PlotlyChart } from "../components/PlotlyChart";
 import { DataTable } from "../components/DataTable";
 
 export const ExplorerPage: React.FC = () => {
-  const { preview, hasDataset } = useDataset();
+  const { preview, hasDataset: hasActiveDataset, activeDataset: selectedDataset } = useDataset();
+  const hasDataset = hasActiveDataset && !selectedDataset?.is_text;
   const [activeTab, setActiveTab] = useState<
     "browse" | "correlations" | "distributions" | "profiler"
   >("browse");
@@ -32,6 +34,8 @@ export const ExplorerPage: React.FC = () => {
   const [pageSize, setPageSize] = useState(25);
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
   const [loadingBrowse, setLoadingBrowse] = useState(false);
+  const [browseError, setBrowseError] = useState(false);
+  const [browseRetry, setBrowseRetry] = useState(0);
 
   // Correlations state
   const [corrMethod, setCorrMethod] = useState<
@@ -69,17 +73,20 @@ export const ExplorerPage: React.FC = () => {
   // Fetch Browse
   useEffect(() => {
     if (!hasDataset) return;
+    let current = true;
     setLoadingBrowse(true);
+    setBrowseError(false);
     explorerApi
       .browse({
         page,
         page_size: pageSize,
         columns: selectedColumns.length > 0 ? selectedColumns : undefined,
       })
-      .then((res) => setBrowseData(res))
-      .catch((err) => console.error(err))
-      .finally(() => setLoadingBrowse(false));
-  }, [hasDataset, page, pageSize, selectedColumns]);
+      .then((res) => { if (current) setBrowseData(res); })
+      .catch(() => { if (current) setBrowseError(true); })
+      .finally(() => { if (current) setLoadingBrowse(false); });
+    return () => { current = false; };
+  }, [hasDataset, page, pageSize, selectedColumns, browseRetry]);
 
   // Fetch Correlations
   useEffect(() => {
@@ -125,9 +132,10 @@ export const ExplorerPage: React.FC = () => {
 
   if (!hasDataset) {
     return (
-      <div className="p-8 text-center text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900/30 shadow-sm">
-        Please load or select a dataset first to explore data.
-      </div>
+      <DatasetEmptyState
+        title="Data Explorer"
+        description="Browse rows, inspect columns, and see how values are distributed."
+      />
     );
   }
 
@@ -147,7 +155,7 @@ export const ExplorerPage: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
         <button
           onClick={() => setActiveTab("browse")}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
@@ -206,7 +214,7 @@ export const ExplorerPage: React.FC = () => {
                 Interactive Dataset Browser
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Displaying {browseData?.total_rows.toLocaleString()} total rows
+                {browseData && `Rows ${browseData.total_rows ? (browseData.page - 1) * browseData.page_size + 1 : 0}–${Math.min(browseData.page * browseData.page_size, browseData.total_rows)} of ${browseData.total_rows.toLocaleString()}. Search, sort, and CSV apply to this page.`}
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -214,8 +222,9 @@ export const ExplorerPage: React.FC = () => {
                 Page size:
               </span>
               <select
+                aria-label="Rows fetched per page"
                 value={pageSize}
-                onChange={(e) => setPageSize(parseInt(e.target.value))}
+                onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
                 className="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-2.5 py-1 text-xs text-slate-900 dark:text-slate-200 shadow-sm"
               >
                 <option value={10}>10</option>
@@ -230,13 +239,24 @@ export const ExplorerPage: React.FC = () => {
             <div className="h-40 flex items-center justify-center text-xs text-slate-500 dark:text-slate-400">
               Loading dataset...
             </div>
+          ) : browseError ? (
+            <div role="alert" className="space-y-2"><p>Could not load this page of data.</p><button type="button" onClick={() => setBrowseRetry(value => value + 1)} className="underline">Retry</button></div>
           ) : (
             <DataTable
+              key={`${page}-${pageSize}`}
+              showPagination={false}
               data={browseData?.data || []}
               columns={browseData?.columns}
               pageSize={pageSize}
               showSearch={true}
             />
+          )}
+          {browseData && (
+            <nav aria-label="Dataset pages" className="flex flex-wrap items-center justify-between gap-2 text-sm">
+              <button type="button" disabled={loadingBrowse || page <= 1} onClick={() => setPage(page - 1)} className="min-h-11 rounded-lg border px-3 disabled:opacity-40">Previous dataset page</button>
+              <span>Page {page} of {Math.max(1, Math.ceil(browseData.total_rows / pageSize))}</span>
+              <button type="button" disabled={loadingBrowse || page * pageSize >= browseData.total_rows} onClick={() => setPage(page + 1)} className="min-h-11 rounded-lg border px-3 disabled:opacity-40">Next dataset page</button>
+            </nav>
           )}
         </div>
       )}

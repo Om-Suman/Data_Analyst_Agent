@@ -13,6 +13,9 @@ class CleaningConfigRequest(BaseModel):
     outlier_threshold: float = 3.0
     iqr_factor: float = 1.5
     columns_to_clean: Optional[list[str]] = None
+    expected_dataset: Optional[str] = None
+    expected_version: Optional[int] = None
+    expected_uploaded_at: Optional[str] = None
 
 
 class CleaningReportResponse(BaseModel):

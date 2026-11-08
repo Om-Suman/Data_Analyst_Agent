@@ -1,3 +1,4 @@
+import { DatasetEmptyState } from "../components/DatasetEmptyState";
 import React, { useState, useEffect } from "react";
 import {
   Lightbulb,
@@ -11,12 +12,16 @@ import {
   Copy,
 } from "lucide-react";
 import { useDataset } from "../context/DatasetContext";
+import { MarkdownRenderer } from "../components/MarkdownRenderer";
 import { insightsApi } from "../api/client";
 import { AIInsightsResponse } from "../types";
 
 export const InsightsPage: React.FC = () => {
-  const { hasDataset, config } = useDataset();
+  const { hasDataset: hasActiveDataset, config, activeDataset: selectedDataset } = useDataset();
+  const hasDataset = hasActiveDataset && !selectedDataset?.is_text;
   const [quickInsights, setQuickInsights] = useState<string[]>([]);
+  const [factsStatus, setFactsStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [factsRetry, setFactsRetry] = useState(0);
   const [aiInsights, setAiInsights] = useState<AIInsightsResponse | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -24,17 +29,25 @@ export const InsightsPage: React.FC = () => {
 
   useEffect(() => {
     if (!hasDataset) return;
-    insightsApi
-      .getQuickInsights()
-      .then((res) => setQuickInsights(res.insights))
-      .catch((err) => console.error(err));
+    let current = true;
+    setFactsStatus('loading');
+    insightsApi.getQuickInsights()
+      .then((res) => { if (current) { setQuickInsights(res.insights); setFactsStatus('ready'); } })
+      .catch(() => { if (current) setFactsStatus('error'); });
+    return () => { current = false; };
+  }, [hasDataset, factsRetry]);
+
+  useEffect(() => {
+    if (!hasDataset) return;
+    let current = true;
 
     insightsApi
       .getCachedAIInsights()
       .then((res) => {
-        if (res.executive_summary) setAiInsights(res);
+        if (current && res.executive_summary) setAiInsights(res);
       })
-      .catch((err) => console.error(err));
+      .catch(() => {});
+    return () => { current = false; };
   }, [hasDataset]);
 
   const handleGenerateAI = async () => {
@@ -71,10 +84,10 @@ ${aiInsights.recommendations.join("\n")}`;
 
   if (!hasDataset) {
     return (
-      <div className="p-8 text-center text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900/30 shadow-sm">
-        Please load or select a dataset first to generate statistical and AI
-        business insights.
-      </div>
+      <DatasetEmptyState
+        title="Insights and Stories"
+        description="Explore key patterns, relationships, and trends across your data."
+      />
     );
   }
 
@@ -115,8 +128,11 @@ ${aiInsights.recommendations.join("\n")}`;
           <TrendingUp className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
           Instant Statistical Observations
         </h3>
+        {factsStatus === 'loading' && <p role="status">Loading statistical observations…</p>}
+        {factsStatus === 'error' && <div role="alert"><p>Could not load observations.</p><button type="button" className="underline" onClick={() => setFactsRetry(value => value + 1)}>Retry</button></div>}
+        {factsStatus === 'ready' && quickInsights.length === 0 && <p>No statistical observations are available for this dataset.</p>}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-          {quickInsights.map((insight, idx) => (
+          {factsStatus === 'ready' && quickInsights.map((insight, idx) => (
             <div
               key={idx}
               className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700/50 text-xs text-slate-700 dark:text-slate-300 shadow-sm"
@@ -124,7 +140,7 @@ ${aiInsights.recommendations.join("\n")}`;
               <span className="text-blue-500 dark:text-blue-400 font-bold">
                 •
               </span>
-              <span className="leading-relaxed">{insight}</span>
+              <div className="min-w-0"><MarkdownRenderer content={insight} showKpiCards={false} /></div>
             </div>
           ))}
         </div>

@@ -1,3 +1,4 @@
+import { DatasetEmptyState } from "../components/DatasetEmptyState";
 import React, { useState, useEffect } from "react";
 import {
   BarChart3,
@@ -19,7 +20,8 @@ import { PlotlyChart } from "../components/PlotlyChart";
 import { useToast } from "../components/Toast";
 
 export const VisualizationsPage: React.FC = () => {
-  const { preview, hasDataset } = useDataset();
+  const { preview, hasDataset: hasActiveDataset, activeDataset: selectedDataset } = useDataset();
+  const hasDataset = hasActiveDataset && !selectedDataset?.is_text;
   const { success, error: toastError } = useToast();
 
   const [chartType, setChartType] = useState("Bar Chart");
@@ -36,6 +38,14 @@ export const VisualizationsPage: React.FC = () => {
   const [title, setTitle] = useState("");
 
   const [loading, setLoading] = useState(false);
+  const [renderedSettings, setRenderedSettings] = useState<string | null>(null);
+  const settingsKey = JSON.stringify([chartType, xAxis, yAxis, colorCol, sizeCol, topN, nbins, hole, template, colorscale, trendline, title]);
+  const presets = [
+    { label: "Compare categories", chart: "Bar Chart" },
+    { label: "Track a trend", chart: "Line Chart" },
+    { label: "Compare two measures", chart: "Scatter Plot" },
+    { label: "See a distribution", chart: "Histogram" },
+  ];
   const [chartResponse, setChartResponse] =
     useState<VisualizationResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +71,23 @@ export const VisualizationsPage: React.FC = () => {
   const numericCols = preview?.numeric_cols || [];
   const catCols = preview?.categorical_cols || [];
 
+  const selectPreset = (chart: string) => {
+    setChartType(chart);
+    setColorCol("None");
+    setSizeCol("None");
+    setTitle("");
+    if (chart === "Line Chart") {
+      setXAxis(preview?.date_cols?.[0] || columns[0] || "");
+      setYAxis(numericCols[0] || "");
+    } else if (chart === "Scatter Plot" || chart === "Histogram") {
+      setXAxis(numericCols[0] || "");
+      setYAxis(numericCols[1] || numericCols[0] || "");
+    } else {
+      setXAxis(catCols[0] || columns[0] || "");
+      setYAxis(numericCols[0] || "");
+    }
+  };
+
   useEffect(() => {
     if (columns.length > 0) {
       if (!xAxis) setXAxis(catCols[0] || columns[0]);
@@ -68,20 +95,15 @@ export const VisualizationsPage: React.FC = () => {
     }
   }, [preview]);
 
-  const handleGenerate = async (axisOverrides?: {
-    xAxis?: string;
-    yAxis?: string;
-  }) => {
-    if (!hasDataset) return;
-    const selectedXAxis = axisOverrides?.xAxis ?? xAxis;
-    const selectedYAxis = axisOverrides?.yAxis ?? yAxis;
+  const handleGenerate = async () => {
+    if (!hasDataset || loading) return;
     setLoading(true);
     setError(null);
     try {
       const res = await visualizationApi.generateChart({
         chart_type: chartType,
-        x: selectedXAxis || undefined,
-        y: selectedYAxis || undefined,
+        x: xAxis || undefined,
+        y: yAxis || undefined,
         color: colorCol === "None" ? undefined : colorCol,
         size: sizeCol === "None" ? undefined : sizeCol,
         top_n: topN,
@@ -93,6 +115,7 @@ export const VisualizationsPage: React.FC = () => {
         title: title || undefined,
       });
       setChartResponse(res);
+      setRenderedSettings(settingsKey);
       success("Chart Rendered", `Generated ${chartType} visualization.`);
     } catch (err: any) {
       setError(err.response?.data?.detail || "Failed to render visualization.");
@@ -102,21 +125,12 @@ export const VisualizationsPage: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    if (hasDataset && columns.length > 0 && !chartResponse) {
-      const initialXAxis = xAxis || catCols[0] || columns[0];
-      const initialYAxis = yAxis || numericCols[0] || columns[1] || columns[0];
-      if (initialXAxis && initialYAxis) {
-        handleGenerate({ xAxis: initialXAxis, yAxis: initialYAxis });
-      }
-    }
-  }, [hasDataset, columns]);
-
   if (!hasDataset) {
     return (
-      <div className="p-8 text-center text-slate-500 border border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-100/50 dark:bg-slate-900/30">
-        Please load or select a dataset first to generate visualizations.
-      </div>
+      <DatasetEmptyState
+        title="Visualizations"
+        description="Build charts from your columns and pin useful views to the BI Canvas."
+      />
     );
   }
 
@@ -139,7 +153,16 @@ export const VisualizationsPage: React.FC = () => {
       </div>
 
       {/* Chart Type Selector Pills */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+      <div className="flex flex-wrap items-center gap-2">
+        {presets.map((preset) => (
+          <button type="button" key={preset.chart} aria-pressed={chartType === preset.chart} onClick={() => selectPreset(preset.chart)} className={`min-h-11 rounded-xl border px-3 text-sm font-semibold ${chartType === preset.chart ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 dark:border-slate-700'}`}>
+            {preset.label}
+          </button>
+        ))}
+      </div>
+      <details className="rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+        <summary className="cursor-pointer text-sm font-semibold">All chart types · {chartType}</summary>
+        <div className="mt-3 flex flex-wrap gap-2">
         {chartTypes.map((ct) => (
           <button
             key={ct.name}
@@ -154,7 +177,8 @@ export const VisualizationsPage: React.FC = () => {
             <span>{ct.name}</span>
           </button>
         ))}
-      </div>
+        </div>
+      </details>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Controls Sidebar */}
@@ -165,18 +189,24 @@ export const VisualizationsPage: React.FC = () => {
           </h3>
 
           <div className="space-y-3.5 text-xs sm:text-sm">
-            <div>
-              <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
-                Custom Chart Title
+            <details className="space-y-2">
+              <summary className="cursor-pointer font-semibold">Chart styling</summary>
+              <label htmlFor="chart-title" className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
+                Custom chart title
               </label>
               <input
                 type="text"
+                id="chart-title"
                 placeholder={activeTitle}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-blue-500"
               />
-            </div>
+              <label htmlFor="chart-palette" className="block font-semibold">Color palette</label>
+              <select id="chart-palette" value={colorscale} onChange={event => setColorscale(event.target.value)} className="w-full rounded-xl border border-slate-300 bg-slate-100 px-3 py-2 dark:border-slate-700 dark:bg-slate-950">
+                {['Blues', 'Viridis', 'Plasma', 'Turbo', 'RdBu'].map(palette => <option key={palette}>{palette}</option>)}
+              </select>
+            </details>
 
             {/* X-Axis / Primary Column */}
             {!["Correlation Heatmap", "KPI Dashboard"].includes(chartType) && (
@@ -185,6 +215,7 @@ export const VisualizationsPage: React.FC = () => {
                   X-Axis / Category
                 </label>
                 <select
+                  aria-label="X axis or category"
                   value={xAxis}
                   onChange={(e) => setXAxis(e.target.value)}
                   className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-blue-500 font-mono text-xs"
@@ -213,6 +244,7 @@ export const VisualizationsPage: React.FC = () => {
                   Y-Axis / Metric
                 </label>
                 <select
+                  aria-label="Y axis or metric"
                   value={yAxis}
                   onChange={(e) => setYAxis(e.target.value)}
                   className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-blue-500 font-mono text-xs"
@@ -234,6 +266,7 @@ export const VisualizationsPage: React.FC = () => {
                   Color / Segment Group
                 </label>
                 <select
+                  aria-label="Color grouping"
                   value={colorCol}
                   onChange={(e) => setColorCol(e.target.value)}
                   className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-blue-500 font-mono text-xs"
@@ -254,6 +287,7 @@ export const VisualizationsPage: React.FC = () => {
                   Size Metric
                 </label>
                 <select
+                  aria-label="Size metric"
                   value={sizeCol}
                   onChange={(e) => setSizeCol(e.target.value)}
                   className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 font-mono text-xs"
@@ -267,23 +301,6 @@ export const VisualizationsPage: React.FC = () => {
                 </select>
               </div>
             )}
-
-            <div>
-              <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
-                Color Palette
-              </label>
-              <select
-                value={colorscale}
-                onChange={(e) => setColorscale(e.target.value)}
-                className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200"
-              >
-                <option value="Blues">Blues</option>
-                <option value="Viridis">Viridis</option>
-                <option value="Plasma">Plasma</option>
-                <option value="Turbo">Turbo</option>
-                <option value="RdBu">Red-Blue</option>
-              </select>
-            </div>
 
             <button
               onClick={() => handleGenerate()}
@@ -310,13 +327,16 @@ export const VisualizationsPage: React.FC = () => {
               Generating {chartType}...
             </div>
           ) : chartResponse?.figure_spec ? (
-            <PlotlyChart
-              spec={chartResponse.figure_spec}
-              height={520}
-              title={activeTitle}
-              chartType={chartType}
-              sourcePage="Visualizations Studio"
-            />
+            <>
+              {renderedSettings !== settingsKey && <p role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">Showing the previous chart. Render again to apply your changes.</p>}
+              <PlotlyChart
+                spec={chartResponse.figure_spec}
+                height={520}
+                title={chartResponse.title}
+                chartType={chartResponse.chart_type}
+                sourcePage="Visualizations Studio"
+              />
+            </>
           ) : (
             <div className="h-[520px] flex items-center justify-center text-sm text-slate-400">
               Configure parameters on the left and click Render Chart.

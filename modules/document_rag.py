@@ -20,28 +20,19 @@ def _get_active_store(store: Optional[dict] = None) -> dict:
 
 _LLAMA_INDEX_LOADED: bool | None = None
 Document: Any = None
-Settings: Any = None
 VectorStoreIndex: Any = None
-MockEmbedding: Any = None
 HuggingFaceEmbedding: Any = None
 
 
 def _init_llamaindex() -> bool:
-    global _LLAMA_INDEX_LOADED, Document, Settings, VectorStoreIndex, MockEmbedding, HuggingFaceEmbedding
+    global _LLAMA_INDEX_LOADED, Document, VectorStoreIndex, HuggingFaceEmbedding
     if _LLAMA_INDEX_LOADED is not None:
         return _LLAMA_INDEX_LOADED
 
     try:
-        from llama_index.core import Document as _Doc, Settings as _Set, VectorStoreIndex as _VSI
+        from llama_index.core import Document as _Doc, VectorStoreIndex as _VSI
         Document = _Doc
-        Settings = _Set
         VectorStoreIndex = _VSI
-
-        try:
-            from llama_index.core.embeddings import MockEmbedding as _ME
-            MockEmbedding = _ME
-        except Exception:
-            MockEmbedding = None
 
         try:
             from llama_index.embeddings.huggingface import HuggingFaceEmbedding as _HFE
@@ -52,9 +43,7 @@ def _init_llamaindex() -> bool:
         _LLAMA_INDEX_LOADED = True
     except Exception:
         Document = None
-        Settings = None
         VectorStoreIndex = None
-        MockEmbedding = None
         HuggingFaceEmbedding = None
         _LLAMA_INDEX_LOADED = False
 
@@ -116,22 +105,20 @@ def build_document_bundle(text: str, metadata: dict | None = None) -> dict:
         "engine": "fallback",
     }
 
-    if not llamaindex_available() or not chunks:
+    if not chunks or not llamaindex_available() or HuggingFaceEmbedding is None:
         return bundle
 
     try:
-        if HuggingFaceEmbedding is not None:
-            Settings.embed_model = HuggingFaceEmbedding(
-                model_name="sentence-transformers/all-MiniLM-L6-v2"
-            )
-        elif MockEmbedding is not None:
-            Settings.embed_model = MockEmbedding(embed_dim=384)
+        embed_model = HuggingFaceEmbedding(
+            model_name="sentence-transformers/all-MiniLM-L6-v2",
+            local_files_only=True,
+        )
 
         documents = [
             Document(text=chunk, metadata={**metadata, "chunk_index": idx + 1})
             for idx, chunk in enumerate(chunks)
         ]
-        index = VectorStoreIndex.from_documents(documents)
+        index = VectorStoreIndex.from_documents(documents, embed_model=embed_model)
         bundle["index"] = index
         bundle["engine"] = "llamaindex"
     except Exception:
@@ -263,12 +250,18 @@ CONTEXT:
     )
 
     if response.startswith("❌") or not response.strip():
-        response = "LLM is not working right now. Please configure your API key in Settings to answer document questions."
+        return {
+            "answer": "An AI answer is unavailable right now. Relevant passages from your document are shown below.",
+            "sources": retrieved_chunks,
+            "engine": engine,
+            "model_used": model_used,
+            "error": "AI answer unavailable",
+        }
 
     return {
         "answer": response.strip(),
         "sources": retrieved_chunks,
         "engine": engine,
         "model_used": model_used,
-        "error": None if not response.startswith("LLM is not working right now") else "LLM is not working right now.",
+        "error": None,
     }
